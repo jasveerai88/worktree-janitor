@@ -1,5 +1,40 @@
 # Changelog
 
+## v1.0.0 — 2026-11-04
+
+The verdicts, the gate, and the plan are unchanged from
+v0.1.0 — this release is about being installable and
+readable as a product:
+
+- **Packaged install.** `pyproject.toml` (setuptools,
+  single-module layout) — `pip install worktree-janitor` /
+  `pipx install worktree-janitor` now put a
+  `worktree-janitor` console command on PATH.
+  `python3 src/worktree_janitor.py` from a checkout
+  keeps working, unchanged.
+- **README rebuilt as a landing page:** one-line hook,
+  badge row, an animated demo (a six-worktree sample
+  judged — 2 KEEP · 2 SAFE_TO_REMOVE · 2 REVIEW — then
+  the printed, never-executed plan), a 20-second
+  quickstart, a verdict table with the real sample
+  numbers, and a comparison table against checking by
+  hand, deleting blind, and full worktree managers.
+  The full reference — the read-only gate, verdict
+  rules at their edges, unpushed semantics, verbatim
+  runs — moved below the fold.
+- **Demo + social assets** in `docs/`: `demo.gif`
+  (rendered from real v1.0.0 output) and
+  `social-preview.png` (1280×640).
+- **Example captures regenerated** with the v1.0.0
+  tool (`examples/sample-report.txt`, `sample-plan.txt`,
+  `sample-report.json`) — same fixture, same verdicts.
+- **Community files:** SECURITY.md and issue templates
+  added; CONTRIBUTING and FUNDING unchanged.
+- Version string is now 1.0.0 everywhere (tool header,
+  `--json` output, package metadata). All 36 tests pass
+  unmodified — the only source change is the version
+  string.
+
 ## v0.1.0 — 2026-11-04
 
 First release.

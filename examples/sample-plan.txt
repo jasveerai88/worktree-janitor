@@ -2,7 +2,7 @@ Captured 2026-11-04 from the fixture built by examples/make_sample.py at /tmp/wo
 Command: python3 src/worktree_janitor.py plan /tmp/worktree-janitor-demo/repo   (exit code: 1)
 These commands were printed, not run — the sample repo still exists, untouched.
 
-worktree-janitor v0.1.0 — plan · repo repo
+worktree-janitor v1.0.0 — plan · repo repo
 /tmp/worktree-janitor-demo/repo · default branch main (the main worktree's checked-out branch) · stale threshold 30 day(s)
 6 worktree(s) — 2 KEEP · 2 SAFE_TO_REMOVE · 2 REVIEW · 8 local branch(es) · 1 stale · 1 stash entry
 

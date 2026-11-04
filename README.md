@@ -1,11 +1,20 @@
-# worktree-janitor
+<h1 align="center">worktree-janitor</h1>
 
-**Parallel agents leave worktrees behind like coat
-hangers. This is the inventory that tells you which ones
-you can actually throw away.**
+<p align="center"><strong>Stale worktrees pile up. Clean up without the fear — an inventory that judges every one, and a plan that never runs itself.</strong></p>
 
-Every AI coding session that runs in its own git
-worktree leaves the worktree behind when it ends —
+<p align="center">
+  <img alt="tests: 36 passing" src="https://img.shields.io/badge/tests-36%20passing-brightgreen">
+  <img alt="python 3.10 | 3.11 | 3.12" src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue">
+  <img alt="version 1.0.0" src="https://img.shields.io/badge/version-1.0.0-orange">
+  <img alt="dependencies: none" src="https://img.shields.io/badge/dependencies-0-brightgreen">
+  <img alt="license: MIT" src="https://img.shields.io/badge/license-MIT-blue">
+</p>
+
+<p align="center"><img alt="worktree-janitor demo: a six-worktree sample repo is scanned and judged, the cleanup plan is printed, and a final git worktree list shows all six worktrees still there" src="docs/demo.gif" width="880"></p>
+
+Parallel agents leave worktrees behind like coat
+hangers. Every AI coding session that runs in its own
+git worktree leaves the worktree behind when it ends —
 headless runs leave theirs *locked*. A forgotten
 worktree pins its branch, holds a folder of disk, and
 may contain the only copy of some piece of work. So the
@@ -13,22 +22,145 @@ pile grows: nobody deletes blindly (that loses work),
 nobody keeps track (that was the manual part), and
 `git worktree list` gets longer every week.
 
-`worktree-janitor` makes the weekly ritual one read-only
-pass. It asks git — and only git — for the facts about
-every worktree and local branch: dirty or clean,
-uncommitted and untracked file counts, merged into the
-default branch or not, unpushed commits, last-commit
-age, locked and prunable state. Each worktree gets a
-verdict with its reasons printed. Then the `plan`
-subcommand prints the exact cleanup commands — and
-never runs them.
+worktree-janitor is the audit step that makes cleanup
+safe. One read-only pass asks git — and only git — for
+the facts about every worktree and local branch: dirty
+or clean, uncommitted and untracked file counts, merged
+into the default branch or not, unpushed commits,
+last-commit age, locked and prunable state. Each
+worktree gets a verdict with its reasons printed:
+**SAFE_TO_REMOVE**, **REVIEW**, or **KEEP**. Then the
+`plan` subcommand prints the exact cleanup commands —
+and never runs them. There is no code path from the
+plan to a shell; the commands are output text, and
+running them (or not) is your decision.
 
-- Pure Python 3 standard library — no dependencies, no install step
-- Local only — nothing leaves your machine; the tool runs git's read-only queries and nothing else
-- Provably read-only: every git call funnels through an allowlist gate in the code (see below), and all calls run with `GIT_OPTIONAL_LOCKS=0`, so git does not even refresh the index
-- Script-friendly exit codes: `0` = nothing to clean, `1` = cleanup candidates or REVIEW items exist, `2` = error
+**Read-only, enforced in code — not just promised.**
+Every git invocation funnels through one gate that
+refuses, before git starts, any argv carrying a
+mutating verb or flag (`remove`, `prune`, `checkout`,
+`clean`, `-d`, `--force`, …). The only commands ever
+run are git's read-only queries, and all of them run
+with `GIT_OPTIONAL_LOCKS=0`, so git does not even
+refresh the index. The test suite proves it two ways:
+every subprocess argv of a full scan + plan run is
+recorded and asserted against the allowlist, and the
+fixture repo's full state is byte-identical before and
+after. The demo above ends the way every run does —
+`git worktree list` afterwards, all six worktrees
+still standing.
 
-## The read-only promise, enforced
+## Quick start
+
+```bash
+pipx install worktree-janitor           # or: pip install worktree-janitor
+worktree-janitor scan                   # judge the repo you're standing in
+worktree-janitor plan                   # the exact commands — printed, never run
+```
+
+That's the whole workflow: one pass, verdicts with
+reasons, an exit code you can gate on — **0** = nothing
+to clean, **1** = cleanup candidates or REVIEW items
+exist, **2** = error. `DIR` can be any folder inside
+any worktree; git resolves the whole repo from it. Add
+`--json` for the same facts as one JSON object, and
+`--stale-days N` to tune when a merged branch counts
+as stale (default 30). From a source checkout,
+`python3 src/worktree_janitor.py scan` does the same
+thing. Python 3.10+, standard library only, no
+dependencies. No repo you dare point it at? The
+bundled sample builds the exact sprawl in the demo:
+
+```bash
+python3 examples/make_sample.py /tmp/worktree-janitor-demo
+worktree-janitor scan /tmp/worktree-janitor-demo/repo
+```
+
+## The verdicts — the bundled sample, judged
+
+The sample repo (built by `examples/make_sample.py`,
+the same fixture the test suite asserts) holds 6
+worktrees, 8 local branches, and 1 stash entry. One
+scan judges all of it:
+
+| Worktree | Verdict | Why — git's facts, printed on the report |
+|---|---|---|
+| `wt-dirty` (branch `feat-wip`) | **REVIEW** | 1 uncommitted change, 1 untracked file, branch not merged into `main`, 1 unpushed commit — it exists nowhere else |
+| `wt-detached` | **REVIEW** | Detached HEAD — no branch holds its position, so merge and unpushed state cannot be verified |
+| `wt-safe` (branch `feat-done`) | **SAFE_TO_REMOVE** | Clean, branch merged into `main`, no unpushed commits, not locked |
+| `wt-gone` (branch `feat-gone`) | **SAFE_TO_REMOVE** | The directory is already gone and git marks the registration prunable — clearing it cannot lose files |
+| `repo` (branch `main`) | **KEEP** | The main worktree |
+| `wt-locked` (branch `feat-locked`) | **KEEP** | Locked by git — reason recorded by git: "agent session running" |
+
+**2 KEEP · 2 SAFE_TO_REMOVE · 2 REVIEW.** The branch
+inventory rides along: `feat-merged-old` (merged, tip
+dated 2020-01-02) is **STALE** and joins the plan as
+`git branch -d` — lowercase, so git itself refuses if
+the branch somehow is not merged. The plan for this
+repo is exactly 3 commands, and the 2 REVIEW
+worktrees are never in it. The full verbatim report
+is [below](#real-runs-verbatim).
+
+[Quick start](#quick-start) · [The verdicts](#the-verdicts--the-bundled-sample-judged) ·
+[How it compares](#how-it-compares) · [Reference](#reference)
+
+## How it compares
+
+| | **worktree-janitor** | `git worktree list` + checking each folder by hand | Deleting as you go (`git worktree remove`, `git branch -D`) | A full worktree manager (e.g. worktrunk) |
+|---|---|---|---|---|
+| The job | Audit before cleanup: inventory, verdicts, a printed plan | The raw list; every judgement in your head | Removal itself | Running the fleet: creating, switching, and removing worktrees all day |
+| Executes deletions | **Never — no code path exists** | You do, one by one | Yes — that is the command | Yes, when you tell it to |
+| Verdicts with reasons | Every worktree, from git's own records | None | None — `remove` refuses a dirty or locked worktree and says nothing about merged or unpushed state | Workflow-first; audit verdicts are not its job |
+| Unverifiable state | Named in the report, and the worktree is REVIEW — never SAFE | Depends on you noticing | `--force` deletes it anyway | — |
+| For agents & scripts | `--json` on both subcommands, exit codes 0 / 1 / 2 | No | No | Varies |
+
+Full managers are excellent at their job — if you run
+many parallel agents, a manager will create and switch
+worktrees for you all day. worktree-janitor is the
+step *before* anyone deletes anything: it manages
+nothing, creates nothing, and switches nothing. It
+tells you what the pile actually is.
+
+## What it does NOT do
+
+- **It never deletes, prunes, or removes anything.**
+  There is no `--execute` flag and there will not be
+  one — the plan being inert text is the entire design.
+- **It never creates or switches worktrees.** It is
+  not a worktree manager; it is the audit in front of
+  whoever (or whatever) does the managing.
+- **It does not measure disk sizes.** The report says
+  what is safe to remove, not what each removal
+  reclaims.
+- **It never fetches.** Unpushed counts use the refs
+  on your machine; their freshness is your last
+  `git fetch`, which stays your decision.
+- **It cannot see what git cannot see.** Worktree
+  stashes an editor or agent runner keeps outside the
+  repo, and folders git has no registration for, are
+  out of scope — stated, not hidden.
+
+## Honest limits (the short version)
+
+Git-visible state only; local branches only; a plan
+is advice computed in one pass, not a transaction —
+a worktree can change the second after the scan, so
+re-run `scan` after executing a plan. The full limits
+are [below](#known-limits).
+
+---
+
+## Reference
+
+**Contents:** [The read-only promise](#the-read-only-promise-enforced) ·
+[Verdict rules](#verdict-rules) ·
+[What "unpushed" means](#what-unpushed-means-here) ·
+[Usage](#usage) · [For agents](#for-agents) ·
+[Real runs](#real-runs-verbatim) · [Tests](#tests) ·
+[Known limits](#known-limits) · [Privacy](#privacy) ·
+[Related](#related)
+
+### The read-only promise, enforced
 
 Plenty of tools *say* read-only. This one is built so
 the mutating path does not exist:
@@ -50,7 +182,7 @@ the mutating path does not exist:
   file) around a scan and a plan and requires exact
   equality.
 
-## Verdicts
+### Verdict rules
 
 - **SAFE_TO_REMOVE** — clean, branch merged into the
   default branch, no unpushed commits, not locked, not
@@ -80,7 +212,12 @@ registration is flagged `stale_after_prune`, and its
 `git branch -d` is sequenced after the
 `git worktree prune` that frees it.
 
-## What "unpushed" means here
+The stash is reported (count + entries) because it is
+shared across all worktrees and survives every worktree
+removal — listed so it is not forgotten, never acted
+on.
+
+### What "unpushed" means here
 
 With an upstream configured, unpushed = commits in
 `upstream..branch`, from git's own record. With no
@@ -97,51 +234,59 @@ against the moment the scan ran, and dates print in
 UTC. Nothing is estimated and nothing is invented:
 every number in the report is git's own.
 
-## Usage
+The default branch is the main worktree's checked-out
+branch. If the main worktree is detached, the tool
+falls back to a local branch named `main`, then
+`master`, and says which basis it used
+(`default_branch_basis` in JSON); if none exists, merge
+and unpushed checks are skipped — named in the report —
+and affected worktrees are REVIEW, never SAFE.
+
+### Usage
 
 ```bash
 # 0. Build the bundled sample sprawl (or use your own repo)
 python3 examples/make_sample.py /tmp/worktree-janitor-demo
 
 # 1. Inventory + verdicts (DIR = any folder in the repo)
-python3 src/worktree_janitor.py scan /tmp/worktree-janitor-demo/repo
+worktree-janitor scan /tmp/worktree-janitor-demo/repo
 
 # 2. The cleanup plan — printed, never executed
-python3 src/worktree_janitor.py plan /tmp/worktree-janitor-demo/repo
+worktree-janitor plan /tmp/worktree-janitor-demo/repo
 
 # 3. Drive it from a script or an agent
-python3 src/worktree_janitor.py scan REPO --json
+worktree-janitor scan REPO --json
+worktree-janitor plan REPO --json
 
 # 4. Tune staleness (default 30 days)
-python3 src/worktree_janitor.py scan REPO --stale-days 90
+worktree-janitor scan REPO --stale-days 90
 ```
 
 Running with no subcommand is `scan` on the current
 folder.
 
-## Use with AI agents
+### For agents
 
 Every run takes `--json`: one JSON object with the same
 facts and exit codes as the text view (errors come back
-as `{"error": ...}`, argparse usage errors included):
-
-```bash
-python3 src/worktree_janitor.py scan REPO --json
-python3 src/worktree_janitor.py plan REPO --json
-```
-
+as `{"error": ...}`, argparse usage errors included).
 Agents: read [SKILL.md](SKILL.md) first — the verdict
-rules at their exact edges, the JSON schema, exit codes,
-and the honesty rules (a plan is a *suggestion computed
+rules at their exact edges, the JSON schema, exit
+codes, and the honesty rules. The first of those rules
+bears repeating here: a plan is a *suggestion computed
 from git's facts*; running the commands is a human's
 decision, and worktree-janitor will never do it for
-you).
+you. An agent that executes the plan "to be helpful"
+defeats the tool's entire design.
 
-## Real run (verbatim)
+### Real runs (verbatim)
 
 Building the bundled sample and scanning it. The full
 captured outputs also live in
-[examples/](examples/sample-report.txt):
+[examples/](examples/sample-report.txt) (they were
+captured at `/tmp/worktree-janitor-demo` with the
+checkout invocation; the installed command prints the
+identical report):
 
 ```text
 $ python3 examples/make_sample.py /tmp/worktree-janitor-demo
@@ -149,27 +294,27 @@ Created /tmp/worktree-janitor-demo/repo plus worktrees wt-safe, wt-dirty, wt-loc
 (exit code: 0)
 
 $ python3 src/worktree_janitor.py scan /tmp/worktree-janitor-demo/repo
-worktree-janitor v0.1.0 — scan · repo repo
+worktree-janitor v1.0.0 — scan · repo repo
 /tmp/worktree-janitor-demo/repo · default branch main (the main worktree's checked-out branch) · stale threshold 30 day(s)
 6 worktree(s) — 2 KEEP · 2 SAFE_TO_REMOVE · 2 REVIEW · 8 local branch(es) · 1 stale · 1 stash entry
 
 WORKTREES:
-  [REVIEW] /tmp/worktree-janitor-demo/wt-detached — detached @ a667b51
+  [REVIEW] /tmp/worktree-janitor-demo/wt-detached — detached @ 45bb378
       clean · last commit 0 day(s) ago, 2026-11-04 (UTC) — "merge done"
       why: detached HEAD — no branch holds this worktree's position, so its merge and unpushed state cannot be verified
-  [REVIEW] /tmp/worktree-janitor-demo/wt-dirty — branch feat-wip @ c602462
+  [REVIEW] /tmp/worktree-janitor-demo/wt-dirty — branch feat-wip @ 46d7d33
       1 uncommitted change(s), 1 untracked file(s) · last commit 0 day(s) ago, 2026-11-04 (UTC) — "wip work"
       why: 1 uncommitted change(s) (staged 0, unstaged 1) — they exist only in this worktree; 1 untracked file(s) — they exist only in this worktree; branch feat-wip is not merged into main (1 commit(s) not in main); 1 unpushed commit(s) (no upstream configured — counted against the default branch main)
-  [SAFE_TO_REMOVE] /tmp/worktree-janitor-demo/wt-gone — branch feat-gone @ a667b51
+  [SAFE_TO_REMOVE] /tmp/worktree-janitor-demo/wt-gone — branch feat-gone @ 45bb378
       directory gone (prunable)
       why: the directory is gone and git marks this worktree prunable (gitdir file points to non-existent location) — clearing the registration cannot lose files; its branch, if any, stays in the branch list below
-  [SAFE_TO_REMOVE] /tmp/worktree-janitor-demo/wt-safe — branch feat-done @ f172613
+  [SAFE_TO_REMOVE] /tmp/worktree-janitor-demo/wt-safe — branch feat-done @ e6302bd
       clean · last commit 0 day(s) ago, 2026-11-04 (UTC) — "done work"
       why: clean, branch feat-done merged into main, no unpushed commits, not locked
-  [KEEP] /tmp/worktree-janitor-demo/repo — branch main @ a667b51
+  [KEEP] /tmp/worktree-janitor-demo/repo — branch main @ 45bb378
       clean · last commit 0 day(s) ago, 2026-11-04 (UTC) — "merge done"
       why: the main worktree
-  [KEEP] /tmp/worktree-janitor-demo/wt-locked — branch feat-locked @ a667b51
+  [KEEP] /tmp/worktree-janitor-demo/wt-locked — branch feat-locked @ 45bb378
       clean · last commit 0 day(s) ago, 2026-11-04 (UTC) — "merge done"
       why: locked by git — reason recorded by git: agent session running
 
@@ -196,7 +341,7 @@ repo is still standing afterwards, untouched:
 
 ```text
 $ python3 src/worktree_janitor.py plan /tmp/worktree-janitor-demo/repo
-worktree-janitor v0.1.0 — plan · repo repo
+worktree-janitor v1.0.0 — plan · repo repo
 /tmp/worktree-janitor-demo/repo · default branch main (the main worktree's checked-out branch) · stale threshold 30 day(s)
 6 worktree(s) — 2 KEEP · 2 SAFE_TO_REMOVE · 2 REVIEW · 8 local branch(es) · 1 stale · 1 stash entry
 
@@ -230,7 +375,7 @@ $ python3 src/worktree_janitor.py scan /tmp/wtj-plain --json
 (exit code: 2)
 ```
 
-## Tests
+### Tests
 
 ```bash
 python3 -m unittest discover -s tests -v
@@ -256,33 +401,17 @@ the allowlist, and the fixture's full state (git
 listings + every working-tree file) is identical before
 and after.
 
-## Two jobs this tool does
-
-1. **For any developer running parallel AI agents**
-   (the public GitHub Sponsors surface): the weekly
-   worktree ritual from every worktree guide — list,
-   then check each folder by hand for uncommitted work,
-   merged status, unpushed commits — becomes one
-   deterministic command whose verdicts an agent can
-   also consume via `--json` before it proposes any
-   cleanup.
-2. **For its author** (internal): the author's engine
-   runs parallel agent lanes and clones/audits many
-   repos; this is the safe pre-cleanup inventory for
-   that sprawl — report first, decide with the facts in
-   hand, delete by hand only what the report cleared.
-
-## Known limits
+### Known limits
 
 - **Git-visible state only.** Tools that keep their own
   worktree stashes outside the repo (some editors and
   agent runners do) are invisible to git and therefore
   to this tool. Orphaned directories that git no longer
   has any registration for are likewise out of scope —
-  v1 inventories what git itself records.
+  v1.0.0 inventories what git itself records.
 - **No disk sizes.** A worktree's on-disk weight
   (especially `node_modules`) is not measured in
-  v0.1.0; the report tells you what is safe to remove,
+  v1.0.0; the report tells you what is safe to remove,
   not what each removal reclaims.
 - **Local branches only.** Remote-tracking branches are
   read only as upstreams; the inventory and the plan
@@ -299,7 +428,7 @@ and after.
   a plan, and eyeball REVIEW items yourself — that is
   what they are for.
 
-## Privacy
+### Privacy
 
 What it touches: the git metadata and working-tree
 status of the one repository you name (via git's own
@@ -309,6 +438,41 @@ this tool, and the git commands it runs perform no
 network operations (no fetch, ever).
 What it changes: nothing — see "The read-only promise,
 enforced" above.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). The ground
+rules are the product: standard library only, local
+only, and read-only is never weakened — a change that
+adds an execution path for the plan will not be
+merged. Verdicts derive from git's own records and
+fail toward REVIEW; skipped checks are named, never
+silent.
+
+## Security
+
+worktree-janitor is itself a safety tool, so its own
+posture is simple: it cannot delete anything, its only
+subprocess use is the gated git runner, and it has no
+network code. See [SECURITY.md](SECURITY.md) for how
+to report a problem.
+
+## Related
+
+The agent-safety trio — three read-only audits for
+agent-heavy setups, each judging a different layer:
+
+- [skill-vet](https://github.com/jasveerai88/skill-vet)
+  — vets a whole agent skill pack before you install
+  it, blocking only on proven stealing / spying /
+  hidden-sending combinations.
+- [permission-audit](https://github.com/jasveerai88/permission-audit)
+  — audits a Claude Code permission allowlist chain
+  for wildcard grants, dangerous modes committed to
+  shared settings, and rules that can never fire.
+- **worktree-janitor** (this repo) — audits what the
+  agents leave behind in git, and prints the cleanup
+  plan it will never run.
 
 ## Support
 

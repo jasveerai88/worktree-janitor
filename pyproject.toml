@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "worktree-janitor"
+version = "1.0.0"
+description = "Read-only inventory of a git repo's worktrees and branches — verdicts with reasons, and a cleanup plan it prints but never executes."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "Jasveer Singh" },
+]
+keywords = [
+    "git",
+    "worktrees",
+    "ai-agents",
+    "claude-code",
+    "cli",
+    "developer-tools",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Version Control :: Git",
+    "Topic :: Utilities",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/jasveerai88/worktree-janitor"
+Repository = "https://github.com/jasveerai88/worktree-janitor"
+Issues = "https://github.com/jasveerai88/worktree-janitor/issues"
+
+[project.scripts]
+worktree-janitor = "worktree_janitor:main"
+
+# The implementation is a single standard-library module in
+# src/; it is installed as the top-level module
+# `worktree_janitor`, and `python3 src/worktree_janitor.py`
+# keeps working from a checkout.
+[tool.setuptools]
+package-dir = { "" = "src" }
+py-modules = ["worktree_janitor"]

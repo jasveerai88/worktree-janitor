@@ -49,25 +49,30 @@ Do NOT use when:
   private worktree stashes and orphaned directories git
   has no registration for are invisible to it (stated in
   the report's honesty footer and the README's limits).
-- You need disk sizes. v0.1.0 does not measure them.
+- You need disk sizes. v1.0.0 does not measure them.
 
 ## Commands
 
+Installed via `pipx install worktree-janitor` or
+`pip install worktree-janitor`. From a source checkout,
+prefix each command with `python3 src/worktree_janitor.py`
+instead of `worktree-janitor` — same tool, same output.
+
 ```bash
 # Inventory + verdicts (text)
-python3 src/worktree_janitor.py scan DIR
+worktree-janitor scan DIR
 
 # Same facts as one JSON object — for scripts and agents
-python3 src/worktree_janitor.py scan DIR --json
+worktree-janitor scan DIR --json
 
 # The cleanup plan (printed commands, never executed)
-python3 src/worktree_janitor.py plan DIR [--json]
+worktree-janitor plan DIR [--json]
 
 # Tune the stale threshold (days; default 30)
-python3 src/worktree_janitor.py scan DIR --stale-days 90
+worktree-janitor scan DIR --stale-days 90
 
 # No subcommand = scan on the current folder
-python3 src/worktree_janitor.py
+worktree-janitor
 ```
 
 DIR may be any folder inside any worktree of the repo;

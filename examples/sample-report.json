@@ -1,16 +1,16 @@
 {
   "tool": "worktree-janitor",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "command": "scan",
   "repo": "/tmp/worktree-janitor-demo/repo",
   "default_branch": "main",
   "default_branch_basis": "the main worktree's checked-out branch",
   "stale_days": 30,
-  "now_unix": 1793779642,
+  "now_unix": 1793784911,
   "worktrees": [
     {
       "path": "/tmp/worktree-janitor-demo/repo",
-      "head": "a667b5184095d0c67c9ba1905ba3b490ff2d6e1c",
+      "head": "45bb378311001829f818645c283e44da3e7b3022",
       "branch": "main",
       "detached": false,
       "bare": false,
@@ -29,8 +29,8 @@
       "ahead": null,
       "behind": null,
       "last_commit": {
-        "sha": "a667b5184095d0c67c9ba1905ba3b490ff2d6e1c",
-        "unix": 1793779638,
+        "sha": "45bb378311001829f818645c283e44da3e7b3022",
+        "unix": 1793784903,
         "subject": "merge done",
         "age_days": 0,
         "date": "2026-11-04"
@@ -43,7 +43,7 @@
     },
     {
       "path": "/tmp/worktree-janitor-demo/wt-detached",
-      "head": "a667b5184095d0c67c9ba1905ba3b490ff2d6e1c",
+      "head": "45bb378311001829f818645c283e44da3e7b3022",
       "branch": null,
       "detached": true,
       "bare": false,
@@ -62,8 +62,8 @@
       "ahead": null,
       "behind": null,
       "last_commit": {
-        "sha": "a667b5184095d0c67c9ba1905ba3b490ff2d6e1c",
-        "unix": 1793779638,
+        "sha": "45bb378311001829f818645c283e44da3e7b3022",
+        "unix": 1793784903,
         "subject": "merge done",
         "age_days": 0,
         "date": "2026-11-04"
@@ -76,7 +76,7 @@
     },
     {
       "path": "/tmp/worktree-janitor-demo/wt-dirty",
-      "head": "c602462afcefe0959b696e52936954bc4556fcd6",
+      "head": "46d7d3343952620f4c2dd9976f561ab12425e111",
       "branch": "feat-wip",
       "detached": false,
       "bare": false,
@@ -95,8 +95,8 @@
       "ahead": null,
       "behind": null,
       "last_commit": {
-        "sha": "c602462afcefe0959b696e52936954bc4556fcd6",
-        "unix": 1793779638,
+        "sha": "46d7d3343952620f4c2dd9976f561ab12425e111",
+        "unix": 1793784903,
         "subject": "wip work",
         "age_days": 0,
         "date": "2026-11-04"
@@ -112,7 +112,7 @@
     },
     {
       "path": "/tmp/worktree-janitor-demo/wt-gone",
-      "head": "a667b5184095d0c67c9ba1905ba3b490ff2d6e1c",
+      "head": "45bb378311001829f818645c283e44da3e7b3022",
       "branch": "feat-gone",
       "detached": false,
       "bare": false,
@@ -131,8 +131,8 @@
       "ahead": null,
       "behind": null,
       "last_commit": {
-        "sha": "a667b5184095d0c67c9ba1905ba3b490ff2d6e1c",
-        "unix": 1793779638,
+        "sha": "45bb378311001829f818645c283e44da3e7b3022",
+        "unix": 1793784903,
         "subject": "merge done",
         "age_days": 0,
         "date": "2026-11-04"
@@ -145,7 +145,7 @@
     },
     {
       "path": "/tmp/worktree-janitor-demo/wt-locked",
-      "head": "a667b5184095d0c67c9ba1905ba3b490ff2d6e1c",
+      "head": "45bb378311001829f818645c283e44da3e7b3022",
       "branch": "feat-locked",
       "detached": false,
       "bare": false,
@@ -164,8 +164,8 @@
       "ahead": null,
       "behind": null,
       "last_commit": {
-        "sha": "a667b5184095d0c67c9ba1905ba3b490ff2d6e1c",
-        "unix": 1793779638,
+        "sha": "45bb378311001829f818645c283e44da3e7b3022",
+        "unix": 1793784903,
         "subject": "merge done",
         "age_days": 0,
         "date": "2026-11-04"
@@ -178,7 +178,7 @@
     },
     {
       "path": "/tmp/worktree-janitor-demo/wt-safe",
-      "head": "f1726130262746d91e806edb15c9d9e3e1c5ebac",
+      "head": "e6302bd888cf082ca2dd155f83a5e853c6667e01",
       "branch": "feat-done",
       "detached": false,
       "bare": false,
@@ -197,8 +197,8 @@
       "ahead": null,
       "behind": null,
       "last_commit": {
-        "sha": "f1726130262746d91e806edb15c9d9e3e1c5ebac",
-        "unix": 1793779638,
+        "sha": "e6302bd888cf082ca2dd155f83a5e853c6667e01",
+        "unix": 1793784902,
         "subject": "done work",
         "age_days": 0,
         "date": "2026-11-04"
@@ -214,10 +214,10 @@
     {
       "name": "feat-done",
       "upstream": null,
-      "tip": "f1726130262746d91e806edb15c9d9e3e1c5ebac",
+      "tip": "e6302bd888cf082ca2dd155f83a5e853c6667e01",
       "last_commit": {
-        "sha": "f1726130262746d91e806edb15c9d9e3e1c5ebac",
-        "unix": 1793779638,
+        "sha": "e6302bd888cf082ca2dd155f83a5e853c6667e01",
+        "unix": 1793784902,
         "subject": "done work",
         "age_days": 0,
         "date": "2026-11-04"
@@ -235,10 +235,10 @@
     {
       "name": "feat-gone",
       "upstream": null,
-      "tip": "a667b5184095d0c67c9ba1905ba3b490ff2d6e1c",
+      "tip": "45bb378311001829f818645c283e44da3e7b3022",
       "last_commit": {
-        "sha": "a667b5184095d0c67c9ba1905ba3b490ff2d6e1c",
-        "unix": 1793779638,
+        "sha": "45bb378311001829f818645c283e44da3e7b3022",
+        "unix": 1793784903,
         "subject": "merge done",
         "age_days": 0,
         "date": "2026-11-04"
@@ -256,10 +256,10 @@
     {
       "name": "feat-locked",
       "upstream": null,
-      "tip": "a667b5184095d0c67c9ba1905ba3b490ff2d6e1c",
+      "tip": "45bb378311001829f818645c283e44da3e7b3022",
       "last_commit": {
-        "sha": "a667b5184095d0c67c9ba1905ba3b490ff2d6e1c",
-        "unix": 1793779638,
+        "sha": "45bb378311001829f818645c283e44da3e7b3022",
+        "unix": 1793784903,
         "subject": "merge done",
         "age_days": 0,
         "date": "2026-11-04"
@@ -277,10 +277,10 @@
     {
       "name": "feat-merged-new",
       "upstream": null,
-      "tip": "450b94558bfc5f4c8c8d6f94eaab35176087f954",
+      "tip": "e33861531d33cf63057ef862ef5d43393b15b8b4",
       "last_commit": {
-        "sha": "450b94558bfc5f4c8c8d6f94eaab35176087f954",
-        "unix": 1793779638,
+        "sha": "e33861531d33cf63057ef862ef5d43393b15b8b4",
+        "unix": 1793784902,
         "subject": "new work",
         "age_days": 0,
         "date": "2026-11-04"
@@ -298,9 +298,9 @@
     {
       "name": "feat-merged-old",
       "upstream": null,
-      "tip": "515349af6ce55d92d7048957a2d2169456664d4b",
+      "tip": "0b687104abe7d99d69539bf96fc6e13518db4253",
       "last_commit": {
-        "sha": "515349af6ce55d92d7048957a2d2169456664d4b",
+        "sha": "0b687104abe7d99d69539bf96fc6e13518db4253",
         "unix": 1577934245,
         "subject": "old work",
         "age_days": 2498,
@@ -319,10 +319,10 @@
     {
       "name": "feat-unmerged",
       "upstream": null,
-      "tip": "17c3dcfd0790586eadbf50c67075eb2f0ffcbceb",
+      "tip": "2b3cd8184ffc55e9d614173b64e2742c52e36db6",
       "last_commit": {
-        "sha": "17c3dcfd0790586eadbf50c67075eb2f0ffcbceb",
-        "unix": 1793779638,
+        "sha": "2b3cd8184ffc55e9d614173b64e2742c52e36db6",
+        "unix": 1793784902,
         "subject": "unmerged work",
         "age_days": 0,
         "date": "2026-11-04"
@@ -340,10 +340,10 @@
     {
       "name": "feat-wip",
       "upstream": null,
-      "tip": "c602462afcefe0959b696e52936954bc4556fcd6",
+      "tip": "46d7d3343952620f4c2dd9976f561ab12425e111",
       "last_commit": {
-        "sha": "c602462afcefe0959b696e52936954bc4556fcd6",
-        "unix": 1793779638,
+        "sha": "46d7d3343952620f4c2dd9976f561ab12425e111",
+        "unix": 1793784903,
         "subject": "wip work",
         "age_days": 0,
         "date": "2026-11-04"
@@ -361,10 +361,10 @@
     {
       "name": "main",
       "upstream": null,
-      "tip": "a667b5184095d0c67c9ba1905ba3b490ff2d6e1c",
+      "tip": "45bb378311001829f818645c283e44da3e7b3022",
       "last_commit": {
-        "sha": "a667b5184095d0c67c9ba1905ba3b490ff2d6e1c",
-        "unix": 1793779638,
+        "sha": "45bb378311001829f818645c283e44da3e7b3022",
+        "unix": 1793784903,
         "subject": "merge done",
         "age_days": 0,
         "date": "2026-11-04"

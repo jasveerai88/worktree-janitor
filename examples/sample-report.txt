@@ -2,27 +2,27 @@ Captured 2026-11-04 from the fixture built by examples/make_sample.py at /tmp/wo
 Command: python3 src/worktree_janitor.py scan /tmp/worktree-janitor-demo/repo   (exit code: 1)
 Ages are as of the capture moment; commit hashes and paths will differ on your machine.
 
-worktree-janitor v0.1.0 — scan · repo repo
+worktree-janitor v1.0.0 — scan · repo repo
 /tmp/worktree-janitor-demo/repo · default branch main (the main worktree's checked-out branch) · stale threshold 30 day(s)
 6 worktree(s) — 2 KEEP · 2 SAFE_TO_REMOVE · 2 REVIEW · 8 local branch(es) · 1 stale · 1 stash entry
 
 WORKTREES:
-  [REVIEW] /tmp/worktree-janitor-demo/wt-detached — detached @ a667b51
+  [REVIEW] /tmp/worktree-janitor-demo/wt-detached — detached @ 45bb378
       clean · last commit 0 day(s) ago, 2026-11-04 (UTC) — "merge done"
       why: detached HEAD — no branch holds this worktree's position, so its merge and unpushed state cannot be verified
-  [REVIEW] /tmp/worktree-janitor-demo/wt-dirty — branch feat-wip @ c602462
+  [REVIEW] /tmp/worktree-janitor-demo/wt-dirty — branch feat-wip @ 46d7d33
       1 uncommitted change(s), 1 untracked file(s) · last commit 0 day(s) ago, 2026-11-04 (UTC) — "wip work"
       why: 1 uncommitted change(s) (staged 0, unstaged 1) — they exist only in this worktree; 1 untracked file(s) — they exist only in this worktree; branch feat-wip is not merged into main (1 commit(s) not in main); 1 unpushed commit(s) (no upstream configured — counted against the default branch main)
-  [SAFE_TO_REMOVE] /tmp/worktree-janitor-demo/wt-gone — branch feat-gone @ a667b51
+  [SAFE_TO_REMOVE] /tmp/worktree-janitor-demo/wt-gone — branch feat-gone @ 45bb378
       directory gone (prunable)
       why: the directory is gone and git marks this worktree prunable (gitdir file points to non-existent location) — clearing the registration cannot lose files; its branch, if any, stays in the branch list below
-  [SAFE_TO_REMOVE] /tmp/worktree-janitor-demo/wt-safe — branch feat-done @ f172613
+  [SAFE_TO_REMOVE] /tmp/worktree-janitor-demo/wt-safe — branch feat-done @ e6302bd
       clean · last commit 0 day(s) ago, 2026-11-04 (UTC) — "done work"
       why: clean, branch feat-done merged into main, no unpushed commits, not locked
-  [KEEP] /tmp/worktree-janitor-demo/repo — branch main @ a667b51
+  [KEEP] /tmp/worktree-janitor-demo/repo — branch main @ 45bb378
       clean · last commit 0 day(s) ago, 2026-11-04 (UTC) — "merge done"
       why: the main worktree
-  [KEEP] /tmp/worktree-janitor-demo/wt-locked — branch feat-locked @ a667b51
+  [KEEP] /tmp/worktree-janitor-demo/wt-locked — branch feat-locked @ 45bb378
       clean · last commit 0 day(s) ago, 2026-11-04 (UTC) — "merge done"
       why: locked by git — reason recorded by git: agent session running
 
