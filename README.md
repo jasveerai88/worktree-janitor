@@ -53,7 +53,7 @@ still standing.
 ## Quick start
 
 ```bash
-pipx install worktree-janitor           # or: pip install worktree-janitor
+pipx install git+https://github.com/jasveerai88/worktree-janitor           # or: pip install git+https://github.com/jasveerai88/worktree-janitor
 worktree-janitor scan                   # judge the repo you're standing in
 worktree-janitor plan                   # the exact commands — printed, never run
 ```
