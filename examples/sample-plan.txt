@@ -1,0 +1,22 @@
+Captured 2026-11-04 from the fixture built by examples/make_sample.py at /tmp/worktree-janitor-demo.
+Command: python3 src/worktree_janitor.py plan /tmp/worktree-janitor-demo/repo   (exit code: 1)
+These commands were printed, not run — the sample repo still exists, untouched.
+
+worktree-janitor v0.1.0 — plan · repo repo
+/tmp/worktree-janitor-demo/repo · default branch main (the main worktree's checked-out branch) · stale threshold 30 day(s)
+6 worktree(s) — 2 KEEP · 2 SAFE_TO_REMOVE · 2 REVIEW · 8 local branch(es) · 1 stale · 1 stash entry
+
+CLEANUP PLAN — the exact commands, in order. worktree-janitor does NOT run them; copy them yourself after reading the REVIEW items:
+
+  git worktree remove /tmp/worktree-janitor-demo/wt-safe
+      # clean, branch feat-done merged into main, no unpushed commits, not locked
+  git worktree prune
+      # clears every prunable worktree registration whose directory is already gone
+  git branch -d feat-merged-old
+      # merged into main, last commit at least 30 day(s) old, not checked out anywhere — lowercase -d, so git itself refuses if the branch is somehow unmerged
+
+After running them, re-run `python3 src/worktree_janitor.py scan` to confirm the repo is CLEAN. Branch deletions use lowercase -d: git itself refuses if a branch is somehow unmerged. There is no -D anywhere in this plan, deliberately.
+
+NOT IN THE PLAN: 2 worktree(s) marked REVIEW — each holds something that exists nowhere else. See the scan report.
+
+worktree-janitor only reads: this plan was computed from git's own read-only queries and printed as text. Nothing was executed, removed or changed.
