@@ -480,6 +480,9 @@ If this saves you one worktree you were about to delete
 — or one afternoon of manual checking — consider
 sponsoring: **https://github.com/sponsors/jasveerai88**
 
+Sponsorship funds the time to maintain worktree-janitor, ship
+fixes, and build the next checks its users ask for.
+
 ## Licence
 
 MIT — see [LICENSE](LICENSE).
