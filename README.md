@@ -3,9 +3,9 @@
 <p align="center"><strong>Stale worktrees pile up. Clean up without the fear — an inventory that judges every one, and a plan that never runs itself.</strong></p>
 
 <p align="center">
-  <img alt="tests: 36 passing" src="https://img.shields.io/badge/tests-36%20passing-brightgreen">
+  <img alt="tests: 54 passing" src="https://img.shields.io/badge/tests-54%20passing-brightgreen">
   <img alt="python 3.10 | 3.11 | 3.12" src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue">
-  <img alt="version 1.0.0" src="https://img.shields.io/badge/version-1.0.0-orange">
+  <img alt="version 1.1.0" src="https://img.shields.io/badge/version-1.1.0-orange">
   <img alt="dependencies: none" src="https://img.shields.io/badge/dependencies-0-brightgreen">
   <img alt="license: MIT" src="https://img.shields.io/badge/license-MIT-blue">
 </p>
@@ -27,7 +27,10 @@ safe. One read-only pass asks git — and only git — for
 the facts about every worktree and local branch: dirty
 or clean, uncommitted and untracked file counts, merged
 into the default branch or not, unpushed commits,
-last-commit age, locked and prunable state. Each
+last-commit age, locked and prunable state. It also
+measures each worktree's disk cost — its working tree
+plus its share of the git metadata — and totals what
+the SAFE removals would reclaim. Each
 worktree gets a verdict with its reasons printed:
 **SAFE_TO_REMOVE**, **REVIEW**, or **KEEP**. Then the
 `plan` subcommand prints the exact cleanup commands —
@@ -98,7 +101,13 @@ dated 2020-01-02) is **STALE** and joins the plan as
 `git branch -d` — lowercase, so git itself refuses if
 the branch somehow is not merged. The plan for this
 repo is exactly 3 commands, and the 2 REVIEW
-worktrees are never in it. The full verbatim report
+worktrees are never in it. Every worktree also carries
+its disk cost on the report — in the sample the whole
+pile is 36.7 KB, almost all of it the main worktree's
+git metadata; removing the one removable worktree
+reclaims 632 B, and the plan says so on its line. (On
+a real agent pile, read `node_modules` for "KB" and
+weep.) The full verbatim report
 is [below](#real-runs-verbatim).
 
 [Quick start](#quick-start) · [The verdicts](#the-verdicts--the-bundled-sample-judged) ·
@@ -112,6 +121,7 @@ is [below](#real-runs-verbatim).
 | Executes deletions | **Never — no code path exists** | You do, one by one | Yes — that is the command | Yes, when you tell it to |
 | Verdicts with reasons | Every worktree, from git's own records | None | None — `remove` refuses a dirty or locked worktree and says nothing about merged or unpushed state | Workflow-first; audit verdicts are not its job |
 | Unverifiable state | Named in the report, and the worktree is REVIEW — never SAFE | Depends on you noticing | `--force` deletes it anyway | — |
+| Disk cost | Per worktree (working tree + git-metadata share), a repo total, and the reclaimable figure for the SAFE set — on the plan itself | `du` per folder by hand, and the `.git/worktrees` admin areas are easy to miss | Not its question | Varies |
 | For agents & scripts | `--json` on both subcommands, exit codes 0 / 1 / 2 | No | No | Varies |
 
 Full managers are excellent at their job — if you run
@@ -129,9 +139,12 @@ tells you what the pile actually is.
 - **It never creates or switches worktrees.** It is
   not a worktree manager; it is the audit in front of
   whoever (or whatever) does the managing.
-- **It does not measure disk sizes.** The report says
-  what is safe to remove, not what each removal
-  reclaims.
+- **It does not do du-style block accounting.** Disk
+  sizes are apparent bytes of regular files, measured
+  live: symlinks are never followed, hardlinked files
+  count once per path, and a path it cannot read is
+  named as a warning with that worktree's size stated
+  as a lower bound.
 - **It never fetches.** Unpushed counts use the refs
   on your machine; their freshness is your last
   `git fetch`, which stays your decision.
@@ -154,6 +167,7 @@ are [below](#known-limits).
 
 **Contents:** [The read-only promise](#the-read-only-promise-enforced) ·
 [Verdict rules](#verdict-rules) ·
+[Disk attribution](#disk-attribution) ·
 [What "unpushed" means](#what-unpushed-means-here) ·
 [Usage](#usage) · [For agents](#for-agents) ·
 [Real runs](#real-runs-verbatim) · [Tests](#tests) ·
@@ -216,6 +230,53 @@ The stash is reported (count + entries) because it is
 shared across all worktrees and survives every worktree
 removal — listed so it is not forgotten, never acted
 on.
+
+### Disk attribution
+
+Every worktree also gets a disk record (`disk` in
+JSON, a `disk …` line in text): `worktree_bytes` —
+the apparent size of its working tree; 
+`metadata_bytes` — its share of the git dir; and
+`total_bytes`, their sum. The report header totals
+all worktrees and states the **reclaimable** figure:
+the sum over the SAFE_TO_REMOVE worktrees. The plan
+annotates each `git worktree remove` line with what
+removing that worktree reclaims.
+
+The measurement is plain filesystem reading — no git
+invocation is added, and the read-only gate's verb
+list does not grow:
+
+- **Apparent bytes of regular files.** A file counts
+  its `st_size`; directories count 0 (their entry
+  sizes are filesystem bookkeeping, not content);
+  hardlinked files count once per path. This is not
+  `du`'s allocated-block accounting, and it does not
+  pretend to be.
+- **Symlinks are never followed** and contribute
+  nothing themselves — a link's target is counted
+  where it lives, if that is inside the tree.
+- **The git dir is partitioned, never double-counted.**
+  A linked worktree's metadata share is its own admin
+  area (`.git/worktrees/<id>`, found by reading the
+  worktree's `.git` pointer file). The main worktree's
+  share is the shared `.git` minus those admin areas,
+  and the `.git` inside its working tree is excluded
+  from its working-tree bytes. No byte of the git
+  dir is ever counted in two shares.
+- **A worktree whose directory is gone reports
+  `disk: null`** — there is nothing on disk to
+  measure. Its leftover admin area is attributed to
+  no worktree (the main share excludes the
+  `worktrees/` subtree), so the reclaimable figure is
+  a floor: the prune removes that leftover too.
+- **Unreadable paths are named, never silent.** If
+  part of a tree cannot be read (permissions), the
+  measured part is reported with `complete: false`
+  and the paths in `warnings` — the size is a lower
+  bound, and the header says so. Sizes never change
+  a verdict: an unmeasurable worktree is not punished
+  for it, and a huge one is not promoted.
 
 ### What "unpushed" means here
 
@@ -294,45 +355,51 @@ Created /tmp/worktree-janitor-demo/repo plus worktrees wt-safe, wt-dirty, wt-loc
 (exit code: 0)
 
 $ python3 src/worktree_janitor.py scan /tmp/worktree-janitor-demo/repo
-worktree-janitor v1.0.0 — scan · repo repo
+worktree-janitor v1.1.0 — scan · repo repo
 /tmp/worktree-janitor-demo/repo · default branch main (the main worktree's checked-out branch) · stale threshold 30 day(s)
 6 worktree(s) — 2 KEEP · 2 SAFE_TO_REMOVE · 2 REVIEW · 8 local branch(es) · 1 stale · 1 stash entry
+disk: 36.7 KB attributed across all worktrees · 632 B reclaimable from the SAFE_TO_REMOVE ones
 
 WORKTREES:
-  [REVIEW] /tmp/worktree-janitor-demo/wt-detached — detached @ 45bb378
-      clean · last commit 0 day(s) ago, 2026-11-04 (UTC) — "merge done"
+  [REVIEW] /tmp/worktree-janitor-demo/wt-detached — detached @ 7b5d2cd
+      clean · last commit 0 day(s) ago, 2026-11-14 (UTC) — "merge done"
+      disk 501 B (working tree 100 B, git metadata 401 B)
       why: detached HEAD — no branch holds this worktree's position, so its merge and unpushed state cannot be verified
-  [REVIEW] /tmp/worktree-janitor-demo/wt-dirty — branch feat-wip @ 46d7d33
-      1 uncommitted change(s), 1 untracked file(s) · last commit 0 day(s) ago, 2026-11-04 (UTC) — "wip work"
+  [REVIEW] /tmp/worktree-janitor-demo/wt-dirty — branch feat-wip @ a63e1a9
+      1 uncommitted change(s), 1 untracked file(s) · last commit 0 day(s) ago, 2026-11-14 (UTC) — "wip work"
+      disk 823 B (working tree 129 B, git metadata 694 B)
       why: 1 uncommitted change(s) (staged 0, unstaged 1) — they exist only in this worktree; 1 untracked file(s) — they exist only in this worktree; branch feat-wip is not merged into main (1 commit(s) not in main); 1 unpushed commit(s) (no upstream configured — counted against the default branch main)
-  [SAFE_TO_REMOVE] /tmp/worktree-janitor-demo/wt-gone — branch feat-gone @ 45bb378
+  [SAFE_TO_REMOVE] /tmp/worktree-janitor-demo/wt-gone — branch feat-gone @ 7b5d2cd
       directory gone (prunable)
       why: the directory is gone and git marks this worktree prunable (gitdir file points to non-existent location) — clearing the registration cannot lose files; its branch, if any, stays in the branch list below
-  [SAFE_TO_REMOVE] /tmp/worktree-janitor-demo/wt-safe — branch feat-done @ e6302bd
-      clean · last commit 0 day(s) ago, 2026-11-04 (UTC) — "done work"
+  [SAFE_TO_REMOVE] /tmp/worktree-janitor-demo/wt-safe — branch feat-done @ b9dc726
+      clean · last commit 0 day(s) ago, 2026-11-14 (UTC) — "done work"
+      disk 632 B (working tree 96 B, git metadata 536 B)
       why: clean, branch feat-done merged into main, no unpushed commits, not locked
-  [KEEP] /tmp/worktree-janitor-demo/repo — branch main @ 45bb378
-      clean · last commit 0 day(s) ago, 2026-11-04 (UTC) — "merge done"
+  [KEEP] /tmp/worktree-janitor-demo/repo — branch main @ 7b5d2cd
+      clean · last commit 0 day(s) ago, 2026-11-14 (UTC) — "merge done"
+      disk 34.2 KB (working tree 33 B, git metadata 34.1 KB)
       why: the main worktree
-  [KEEP] /tmp/worktree-janitor-demo/wt-locked — branch feat-locked @ 45bb378
-      clean · last commit 0 day(s) ago, 2026-11-04 (UTC) — "merge done"
+  [KEEP] /tmp/worktree-janitor-demo/wt-locked — branch feat-locked @ 7b5d2cd
+      clean · last commit 0 day(s) ago, 2026-11-14 (UTC) — "merge done"
+      disk 660 B (working tree 98 B, git metadata 562 B)
       why: locked by git — reason recorded by git: agent session running
 
 BRANCHES:
-  feat-done · checked out at /tmp/worktree-janitor-demo/wt-safe · merged into main · last commit 0 day(s) ago, 2026-11-04 (UTC) — "done work"
-  feat-gone · checked out at /tmp/worktree-janitor-demo/wt-gone · merged into main · last commit 0 day(s) ago, 2026-11-04 (UTC) — "merge done"
-  feat-locked · checked out at /tmp/worktree-janitor-demo/wt-locked · merged into main · last commit 0 day(s) ago, 2026-11-04 (UTC) — "merge done"
-  feat-merged-new · merged into main · last commit 0 day(s) ago, 2026-11-04 (UTC) — "new work"
-  feat-merged-old · merged into main · last commit 2498 day(s) ago, 2020-01-02 (UTC) — "old work" · STALE
-  feat-unmerged · NOT merged into main (1 commit(s) not in it) · last commit 0 day(s) ago, 2026-11-04 (UTC) — "unmerged work"
-  feat-wip · checked out at /tmp/worktree-janitor-demo/wt-dirty · NOT merged into main (1 commit(s) not in it) · last commit 0 day(s) ago, 2026-11-04 (UTC) — "wip work"
-  main · default · checked out at /tmp/worktree-janitor-demo/repo · merged into main · last commit 0 day(s) ago, 2026-11-04 (UTC) — "merge done"
+  feat-done · checked out at /tmp/worktree-janitor-demo/wt-safe · merged into main · last commit 0 day(s) ago, 2026-11-14 (UTC) — "done work"
+  feat-gone · checked out at /tmp/worktree-janitor-demo/wt-gone · merged into main · last commit 0 day(s) ago, 2026-11-14 (UTC) — "merge done"
+  feat-locked · checked out at /tmp/worktree-janitor-demo/wt-locked · merged into main · last commit 0 day(s) ago, 2026-11-14 (UTC) — "merge done"
+  feat-merged-new · merged into main · last commit 0 day(s) ago, 2026-11-14 (UTC) — "new work"
+  feat-merged-old · merged into main · last commit 2508 day(s) ago, 2020-01-02 (UTC) — "old work" · STALE
+  feat-unmerged · NOT merged into main (1 commit(s) not in it) · last commit 0 day(s) ago, 2026-11-14 (UTC) — "unmerged work"
+  feat-wip · checked out at /tmp/worktree-janitor-demo/wt-dirty · NOT merged into main (1 commit(s) not in it) · last commit 0 day(s) ago, 2026-11-14 (UTC) — "wip work"
+  main · default · checked out at /tmp/worktree-janitor-demo/repo · merged into main · last commit 0 day(s) ago, 2026-11-14 (UTC) — "merge done"
 
 STASH: 1 entry — the stash is shared across all worktrees; removing a worktree never touches it, and neither does this tool:
   stash@{0}: On main: test stash
 
 VERDICT: cleanup candidates exist — run the `plan` subcommand for the exact commands, review the REVIEW items by hand first.
-worktree-janitor only reads: every fact above came from git's own read-only queries, nothing was executed, removed or changed — not even an index refresh (GIT_OPTIONAL_LOCKS=0). Verdicts are git's facts (clean / merged / unpushed / locked), never a guess; a check that could not be made is named under CHECKS SKIPPED and its worktree is REVIEW, never SAFE.
+worktree-janitor only reads: the verdict facts above came from git's own read-only queries and the disk sizes from plain filesystem reads (symlinks never followed), nothing was executed, removed or changed — not even an index refresh (GIT_OPTIONAL_LOCKS=0). Verdicts are git's facts (clean / merged / unpushed / locked), never a guess; a check that could not be made is named under CHECKS SKIPPED and its worktree is REVIEW, never SAFE.
 (exit code: 1)
 ```
 
@@ -341,14 +408,15 @@ repo is still standing afterwards, untouched:
 
 ```text
 $ python3 src/worktree_janitor.py plan /tmp/worktree-janitor-demo/repo
-worktree-janitor v1.0.0 — plan · repo repo
+worktree-janitor v1.1.0 — plan · repo repo
 /tmp/worktree-janitor-demo/repo · default branch main (the main worktree's checked-out branch) · stale threshold 30 day(s)
 6 worktree(s) — 2 KEEP · 2 SAFE_TO_REMOVE · 2 REVIEW · 8 local branch(es) · 1 stale · 1 stash entry
+disk: 36.7 KB attributed across all worktrees · 632 B reclaimable from the SAFE_TO_REMOVE ones
 
 CLEANUP PLAN — the exact commands, in order. worktree-janitor does NOT run them; copy them yourself after reading the REVIEW items:
 
   git worktree remove /tmp/worktree-janitor-demo/wt-safe
-      # clean, branch feat-done merged into main, no unpushed commits, not locked
+      # clean, branch feat-done merged into main, no unpushed commits, not locked — removing it reclaims 632 B of disk
   git worktree prune
       # clears every prunable worktree registration whose directory is already gone
   git branch -d feat-merged-old
@@ -358,7 +426,7 @@ After running them, re-run `python3 src/worktree_janitor.py scan` to confirm the
 
 NOT IN THE PLAN: 2 worktree(s) marked REVIEW — each holds something that exists nowhere else. See the scan report.
 
-worktree-janitor only reads: this plan was computed from git's own read-only queries and printed as text. Nothing was executed, removed or changed.
+worktree-janitor only reads: this plan was computed from git's own read-only queries and the disk sizes from plain filesystem reads, and printed as text. Nothing was executed, removed or changed.
 (exit code: 1)
 ```
 
@@ -379,7 +447,7 @@ $ python3 src/worktree_janitor.py scan /tmp/wtj-plain --json
 
 ```bash
 python3 -m unittest discover -s tests -v
-# Ran 36 tests — OK
+# Ran 54 tests — OK
 ```
 
 The suite builds REAL git repositories with the git CLI
@@ -401,6 +469,19 @@ the allowlist, and the fixture's full state (git
 listings + every working-tree file) is identical before
 and after.
 
+The disk attribution is pinned just as hard: a
+purpose-built tree whose every file the test wrote
+itself must measure to the exact byte; symlinks to a
+large file and to a directory (and a broken link) must
+contribute nothing; an unreadable directory must
+produce a named warning and a lower-bound total, never
+a crash (exercised both with real permission bits and
+with a forced `PermissionError`, so it is verified even
+where the suite runs as root); a sized worktree in a
+real repo must match its hand-computed byte total
+exactly, and the main worktree's `.git` must be counted
+once — as metadata, never also as working tree.
+
 ### Known limits
 
 - **Git-visible state only.** Tools that keep their own
@@ -408,11 +489,19 @@ and after.
   agent runners do) are invisible to git and therefore
   to this tool. Orphaned directories that git no longer
   has any registration for are likewise out of scope —
-  v1.0.0 inventories what git itself records.
-- **No disk sizes.** A worktree's on-disk weight
-  (especially `node_modules`) is not measured in
-  v1.0.0; the report tells you what is safe to remove,
-  not what each removal reclaims.
+  the tool inventories what git itself records.
+- **Disk sizes are apparent bytes, not allocated
+  blocks.** A 1-byte file reports 1 B, not its 4 KiB
+  block; a sparse file reports its full apparent
+  size. Symlinks are never followed, hardlinks count
+  once per path, and a worktree whose folder is gone
+  reports no size at all — its registration is all
+  that remains, and its leftover git admin area is
+  attributed to no one (see
+  [Disk attribution](#disk-attribution)). For exact
+  on-disk block usage, `du` remains the tool; this
+  report's figures are the comparable, per-worktree
+  accounting of file content.
 - **Local branches only.** Remote-tracking branches are
   read only as upstreams; the inventory and the plan
   concern local worktrees and local branches.

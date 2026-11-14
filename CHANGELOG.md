@@ -1,5 +1,68 @@
 # Changelog
 
+## v1.1.0 — 2026-11-14
+
+- **Disk attribution.** Every worktree now carries a
+  disk record: the apparent size of its working tree
+  plus its share of the git metadata, in text
+  (`disk 632 B (working tree 96 B, git metadata
+  536 B)`) and in `--json` (`disk: {worktree_bytes,
+  metadata_bytes, total_bytes, complete, warnings}`
+  per worktree, raw bytes; `null` for a worktree
+  whose directory is gone). The report header totals
+  all worktrees and states the reclaimable figure —
+  the sum over the SAFE_TO_REMOVE set — and each
+  `git worktree remove` line in the plan is annotated
+  with what removing that worktree reclaims.
+- **Measured without touching the read-only gate.**
+  Sizes are plain filesystem reads: regular files
+  count their apparent size, directories count 0,
+  symlinks are never followed and contribute nothing,
+  hardlinks count once per path. The git dir is
+  partitioned, never double-counted — a linked
+  worktree's metadata share is its own admin area
+  (`.git/worktrees/<id>`, located by reading the
+  worktree's `.git` pointer file); the main
+  worktree's share is the shared `.git` minus those
+  admin areas, and the `.git` inside its working tree
+  is excluded from its working-tree bytes. No git
+  invocation was added; verdicts never depend on
+  sizes.
+- **Honesty rules carried over to sizes.** A path
+  that cannot be read is named in the worktree's
+  `warnings` with `complete: false` — that size is a
+  lower bound and the header says so. A gone
+  worktree's leftover admin area is attributed to no
+  one, so the reclaimable figure is a floor (the
+  prune removes that leftover too). This is apparent
+  file content, not `du`'s allocated-block
+  accounting — the README's Disk attribution section
+  states the basis in full.
+- **Docs + captures.** README gains the Disk
+  attribution reference section, the comparison-table
+  row, and regenerated verbatim runs; the example
+  captures (`sample-report.txt`, `sample-plan.txt`,
+  `sample-report.json`) are regenerated with the
+  v1.1.0 tool on the same fixture — same verdicts,
+  same 3-command plan, now with disk lines. SKILL.md
+  documents the disk fields and its install lines now
+  use the PyPI form (`pipx install
+  worktree-janitor-cli`).
+- 54 tests (36 at v1.0.0, all passing unmodified in
+  what they assert about verdicts) + 18 new disk
+  tests: a purpose-built tree measured to the exact
+  byte, symlink non-following (file link, dir link,
+  broken link), exclusion of a subtree, the
+  permission-error path (real permission bits, plus a
+  forced `PermissionError` twin so it is verified
+  where the suite runs as root), `_git_dirs` on every
+  `.git` shape including the `commondir` redirect and
+  garbage pointer files, a sized worktree in a real
+  repo checked against its hand-computed byte total,
+  the main worktree's `.git` counted exactly once,
+  and the reclaimable total equalling the SAFE
+  worktree's total on the big fixture.
+
 ## v1.0.0 — 2026-11-04
 
 The verdicts, the gate, and the plan are unchanged from
@@ -7,8 +70,8 @@ v0.1.0 — this release is about being installable and
 readable as a product:
 
 - **Packaged install.** `pyproject.toml` (setuptools,
-  single-module layout) — `pip install worktree-janitor` /
-  `pipx install worktree-janitor` now put a
+  single-module layout) — `pip install git+https://github.com/jasveerai88/worktree-janitor` /
+  `pipx install git+https://github.com/jasveerai88/worktree-janitor` now put a
   `worktree-janitor` console command on PATH.
   `python3 src/worktree_janitor.py` from a checkout
   keeps working, unchanged.

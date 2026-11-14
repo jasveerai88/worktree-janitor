@@ -1,16 +1,16 @@
 {
   "tool": "worktree-janitor",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "command": "scan",
   "repo": "/tmp/worktree-janitor-demo/repo",
   "default_branch": "main",
   "default_branch_basis": "the main worktree's checked-out branch",
   "stale_days": 30,
-  "now_unix": 1793784911,
+  "now_unix": 1794639051,
   "worktrees": [
     {
       "path": "/tmp/worktree-janitor-demo/repo",
-      "head": "45bb378311001829f818645c283e44da3e7b3022",
+      "head": "7b5d2cdc0b1bfe1e2af500a676338b6a3d50d1cb",
       "branch": "main",
       "detached": false,
       "bare": false,
@@ -29,21 +29,28 @@
       "ahead": null,
       "behind": null,
       "last_commit": {
-        "sha": "45bb378311001829f818645c283e44da3e7b3022",
-        "unix": 1793784903,
+        "sha": "7b5d2cdc0b1bfe1e2af500a676338b6a3d50d1cb",
+        "unix": 1794639051,
         "subject": "merge done",
         "age_days": 0,
-        "date": "2026-11-04"
+        "date": "2026-11-14"
       },
       "age_days": 0,
       "verdict": "KEEP",
       "reasons": [
         "the main worktree"
-      ]
+      ],
+      "disk": {
+        "worktree_bytes": 33,
+        "metadata_bytes": 34965,
+        "total_bytes": 34998,
+        "complete": true,
+        "warnings": []
+      }
     },
     {
       "path": "/tmp/worktree-janitor-demo/wt-detached",
-      "head": "45bb378311001829f818645c283e44da3e7b3022",
+      "head": "7b5d2cdc0b1bfe1e2af500a676338b6a3d50d1cb",
       "branch": null,
       "detached": true,
       "bare": false,
@@ -62,21 +69,28 @@
       "ahead": null,
       "behind": null,
       "last_commit": {
-        "sha": "45bb378311001829f818645c283e44da3e7b3022",
-        "unix": 1793784903,
+        "sha": "7b5d2cdc0b1bfe1e2af500a676338b6a3d50d1cb",
+        "unix": 1794639051,
         "subject": "merge done",
         "age_days": 0,
-        "date": "2026-11-04"
+        "date": "2026-11-14"
       },
       "age_days": 0,
       "verdict": "REVIEW",
       "reasons": [
         "detached HEAD \u2014 no branch holds this worktree's position, so its merge and unpushed state cannot be verified"
-      ]
+      ],
+      "disk": {
+        "worktree_bytes": 100,
+        "metadata_bytes": 401,
+        "total_bytes": 501,
+        "complete": true,
+        "warnings": []
+      }
     },
     {
       "path": "/tmp/worktree-janitor-demo/wt-dirty",
-      "head": "46d7d3343952620f4c2dd9976f561ab12425e111",
+      "head": "a63e1a93977835075c66bc8bef9c3280a91d0416",
       "branch": "feat-wip",
       "detached": false,
       "bare": false,
@@ -95,11 +109,11 @@
       "ahead": null,
       "behind": null,
       "last_commit": {
-        "sha": "46d7d3343952620f4c2dd9976f561ab12425e111",
-        "unix": 1793784903,
+        "sha": "a63e1a93977835075c66bc8bef9c3280a91d0416",
+        "unix": 1794639051,
         "subject": "wip work",
         "age_days": 0,
-        "date": "2026-11-04"
+        "date": "2026-11-14"
       },
       "age_days": 0,
       "verdict": "REVIEW",
@@ -108,11 +122,18 @@
         "1 untracked file(s) \u2014 they exist only in this worktree",
         "branch feat-wip is not merged into main (1 commit(s) not in main)",
         "1 unpushed commit(s) (no upstream configured \u2014 counted against the default branch main)"
-      ]
+      ],
+      "disk": {
+        "worktree_bytes": 129,
+        "metadata_bytes": 694,
+        "total_bytes": 823,
+        "complete": true,
+        "warnings": []
+      }
     },
     {
       "path": "/tmp/worktree-janitor-demo/wt-gone",
-      "head": "45bb378311001829f818645c283e44da3e7b3022",
+      "head": "7b5d2cdc0b1bfe1e2af500a676338b6a3d50d1cb",
       "branch": "feat-gone",
       "detached": false,
       "bare": false,
@@ -131,21 +152,22 @@
       "ahead": null,
       "behind": null,
       "last_commit": {
-        "sha": "45bb378311001829f818645c283e44da3e7b3022",
-        "unix": 1793784903,
+        "sha": "7b5d2cdc0b1bfe1e2af500a676338b6a3d50d1cb",
+        "unix": 1794639051,
         "subject": "merge done",
         "age_days": 0,
-        "date": "2026-11-04"
+        "date": "2026-11-14"
       },
       "age_days": 0,
       "verdict": "SAFE_TO_REMOVE",
       "reasons": [
         "the directory is gone and git marks this worktree prunable (gitdir file points to non-existent location) \u2014 clearing the registration cannot lose files; its branch, if any, stays in the branch list below"
-      ]
+      ],
+      "disk": null
     },
     {
       "path": "/tmp/worktree-janitor-demo/wt-locked",
-      "head": "45bb378311001829f818645c283e44da3e7b3022",
+      "head": "7b5d2cdc0b1bfe1e2af500a676338b6a3d50d1cb",
       "branch": "feat-locked",
       "detached": false,
       "bare": false,
@@ -164,21 +186,28 @@
       "ahead": null,
       "behind": null,
       "last_commit": {
-        "sha": "45bb378311001829f818645c283e44da3e7b3022",
-        "unix": 1793784903,
+        "sha": "7b5d2cdc0b1bfe1e2af500a676338b6a3d50d1cb",
+        "unix": 1794639051,
         "subject": "merge done",
         "age_days": 0,
-        "date": "2026-11-04"
+        "date": "2026-11-14"
       },
       "age_days": 0,
       "verdict": "KEEP",
       "reasons": [
         "locked by git \u2014 reason recorded by git: agent session running"
-      ]
+      ],
+      "disk": {
+        "worktree_bytes": 98,
+        "metadata_bytes": 562,
+        "total_bytes": 660,
+        "complete": true,
+        "warnings": []
+      }
     },
     {
       "path": "/tmp/worktree-janitor-demo/wt-safe",
-      "head": "e6302bd888cf082ca2dd155f83a5e853c6667e01",
+      "head": "b9dc7268623518ca104be5eaeec703024399d010",
       "branch": "feat-done",
       "detached": false,
       "bare": false,
@@ -197,30 +226,37 @@
       "ahead": null,
       "behind": null,
       "last_commit": {
-        "sha": "e6302bd888cf082ca2dd155f83a5e853c6667e01",
-        "unix": 1793784902,
+        "sha": "b9dc7268623518ca104be5eaeec703024399d010",
+        "unix": 1794639051,
         "subject": "done work",
         "age_days": 0,
-        "date": "2026-11-04"
+        "date": "2026-11-14"
       },
       "age_days": 0,
       "verdict": "SAFE_TO_REMOVE",
       "reasons": [
         "clean, branch feat-done merged into main, no unpushed commits, not locked"
-      ]
+      ],
+      "disk": {
+        "worktree_bytes": 96,
+        "metadata_bytes": 536,
+        "total_bytes": 632,
+        "complete": true,
+        "warnings": []
+      }
     }
   ],
   "branches": [
     {
       "name": "feat-done",
       "upstream": null,
-      "tip": "e6302bd888cf082ca2dd155f83a5e853c6667e01",
+      "tip": "b9dc7268623518ca104be5eaeec703024399d010",
       "last_commit": {
-        "sha": "e6302bd888cf082ca2dd155f83a5e853c6667e01",
-        "unix": 1793784902,
+        "sha": "b9dc7268623518ca104be5eaeec703024399d010",
+        "unix": 1794639051,
         "subject": "done work",
         "age_days": 0,
-        "date": "2026-11-04"
+        "date": "2026-11-14"
       },
       "age_days": 0,
       "checked_out_in": "/tmp/worktree-janitor-demo/wt-safe",
@@ -235,13 +271,13 @@
     {
       "name": "feat-gone",
       "upstream": null,
-      "tip": "45bb378311001829f818645c283e44da3e7b3022",
+      "tip": "7b5d2cdc0b1bfe1e2af500a676338b6a3d50d1cb",
       "last_commit": {
-        "sha": "45bb378311001829f818645c283e44da3e7b3022",
-        "unix": 1793784903,
+        "sha": "7b5d2cdc0b1bfe1e2af500a676338b6a3d50d1cb",
+        "unix": 1794639051,
         "subject": "merge done",
         "age_days": 0,
-        "date": "2026-11-04"
+        "date": "2026-11-14"
       },
       "age_days": 0,
       "checked_out_in": "/tmp/worktree-janitor-demo/wt-gone",
@@ -256,13 +292,13 @@
     {
       "name": "feat-locked",
       "upstream": null,
-      "tip": "45bb378311001829f818645c283e44da3e7b3022",
+      "tip": "7b5d2cdc0b1bfe1e2af500a676338b6a3d50d1cb",
       "last_commit": {
-        "sha": "45bb378311001829f818645c283e44da3e7b3022",
-        "unix": 1793784903,
+        "sha": "7b5d2cdc0b1bfe1e2af500a676338b6a3d50d1cb",
+        "unix": 1794639051,
         "subject": "merge done",
         "age_days": 0,
-        "date": "2026-11-04"
+        "date": "2026-11-14"
       },
       "age_days": 0,
       "checked_out_in": "/tmp/worktree-janitor-demo/wt-locked",
@@ -277,13 +313,13 @@
     {
       "name": "feat-merged-new",
       "upstream": null,
-      "tip": "e33861531d33cf63057ef862ef5d43393b15b8b4",
+      "tip": "66b4fccc3efc4a831296a8009082de6ad4ecd814",
       "last_commit": {
-        "sha": "e33861531d33cf63057ef862ef5d43393b15b8b4",
-        "unix": 1793784902,
+        "sha": "66b4fccc3efc4a831296a8009082de6ad4ecd814",
+        "unix": 1794639051,
         "subject": "new work",
         "age_days": 0,
-        "date": "2026-11-04"
+        "date": "2026-11-14"
       },
       "age_days": 0,
       "checked_out_in": null,
@@ -298,15 +334,15 @@
     {
       "name": "feat-merged-old",
       "upstream": null,
-      "tip": "0b687104abe7d99d69539bf96fc6e13518db4253",
+      "tip": "87d82f242b6694c7f25f29b339e0d6189fd85bd2",
       "last_commit": {
-        "sha": "0b687104abe7d99d69539bf96fc6e13518db4253",
+        "sha": "87d82f242b6694c7f25f29b339e0d6189fd85bd2",
         "unix": 1577934245,
         "subject": "old work",
-        "age_days": 2498,
+        "age_days": 2508,
         "date": "2020-01-02"
       },
-      "age_days": 2498,
+      "age_days": 2508,
       "checked_out_in": null,
       "is_default": false,
       "merged": true,
@@ -319,13 +355,13 @@
     {
       "name": "feat-unmerged",
       "upstream": null,
-      "tip": "2b3cd8184ffc55e9d614173b64e2742c52e36db6",
+      "tip": "86d5fe5fc8d890d09b844372a854832437e234a5",
       "last_commit": {
-        "sha": "2b3cd8184ffc55e9d614173b64e2742c52e36db6",
-        "unix": 1793784902,
+        "sha": "86d5fe5fc8d890d09b844372a854832437e234a5",
+        "unix": 1794639051,
         "subject": "unmerged work",
         "age_days": 0,
-        "date": "2026-11-04"
+        "date": "2026-11-14"
       },
       "age_days": 0,
       "checked_out_in": null,
@@ -340,13 +376,13 @@
     {
       "name": "feat-wip",
       "upstream": null,
-      "tip": "46d7d3343952620f4c2dd9976f561ab12425e111",
+      "tip": "a63e1a93977835075c66bc8bef9c3280a91d0416",
       "last_commit": {
-        "sha": "46d7d3343952620f4c2dd9976f561ab12425e111",
-        "unix": 1793784903,
+        "sha": "a63e1a93977835075c66bc8bef9c3280a91d0416",
+        "unix": 1794639051,
         "subject": "wip work",
         "age_days": 0,
-        "date": "2026-11-04"
+        "date": "2026-11-14"
       },
       "age_days": 0,
       "checked_out_in": "/tmp/worktree-janitor-demo/wt-dirty",
@@ -361,13 +397,13 @@
     {
       "name": "main",
       "upstream": null,
-      "tip": "45bb378311001829f818645c283e44da3e7b3022",
+      "tip": "7b5d2cdc0b1bfe1e2af500a676338b6a3d50d1cb",
       "last_commit": {
-        "sha": "45bb378311001829f818645c283e44da3e7b3022",
-        "unix": 1793784903,
+        "sha": "7b5d2cdc0b1bfe1e2af500a676338b6a3d50d1cb",
+        "unix": 1794639051,
         "subject": "merge done",
         "age_days": 0,
-        "date": "2026-11-04"
+        "date": "2026-11-14"
       },
       "age_days": 0,
       "checked_out_in": "/tmp/worktree-janitor-demo/repo",
@@ -400,6 +436,11 @@
     "stale_branches": 1,
     "stashes": 1,
     "findings": 5
+  },
+  "disk": {
+    "total_bytes": 37614,
+    "reclaimable_bytes": 632,
+    "complete": true
   },
   "clean": false
 }

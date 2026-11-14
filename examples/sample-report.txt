@@ -1,43 +1,49 @@
-Captured 2026-11-04 from the fixture built by examples/make_sample.py at /tmp/worktree-janitor-demo.
+Captured 2026-11-14 from the fixture built by examples/make_sample.py at /tmp/worktree-janitor-demo.
 Command: python3 src/worktree_janitor.py scan /tmp/worktree-janitor-demo/repo   (exit code: 1)
 Ages are as of the capture moment; commit hashes and paths will differ on your machine.
 
-worktree-janitor v1.0.0 — scan · repo repo
+worktree-janitor v1.1.0 — scan · repo repo
 /tmp/worktree-janitor-demo/repo · default branch main (the main worktree's checked-out branch) · stale threshold 30 day(s)
 6 worktree(s) — 2 KEEP · 2 SAFE_TO_REMOVE · 2 REVIEW · 8 local branch(es) · 1 stale · 1 stash entry
+disk: 36.7 KB attributed across all worktrees · 632 B reclaimable from the SAFE_TO_REMOVE ones
 
 WORKTREES:
-  [REVIEW] /tmp/worktree-janitor-demo/wt-detached — detached @ 45bb378
-      clean · last commit 0 day(s) ago, 2026-11-04 (UTC) — "merge done"
+  [REVIEW] /tmp/worktree-janitor-demo/wt-detached — detached @ 7b5d2cd
+      clean · last commit 0 day(s) ago, 2026-11-14 (UTC) — "merge done"
+      disk 501 B (working tree 100 B, git metadata 401 B)
       why: detached HEAD — no branch holds this worktree's position, so its merge and unpushed state cannot be verified
-  [REVIEW] /tmp/worktree-janitor-demo/wt-dirty — branch feat-wip @ 46d7d33
-      1 uncommitted change(s), 1 untracked file(s) · last commit 0 day(s) ago, 2026-11-04 (UTC) — "wip work"
+  [REVIEW] /tmp/worktree-janitor-demo/wt-dirty — branch feat-wip @ a63e1a9
+      1 uncommitted change(s), 1 untracked file(s) · last commit 0 day(s) ago, 2026-11-14 (UTC) — "wip work"
+      disk 823 B (working tree 129 B, git metadata 694 B)
       why: 1 uncommitted change(s) (staged 0, unstaged 1) — they exist only in this worktree; 1 untracked file(s) — they exist only in this worktree; branch feat-wip is not merged into main (1 commit(s) not in main); 1 unpushed commit(s) (no upstream configured — counted against the default branch main)
-  [SAFE_TO_REMOVE] /tmp/worktree-janitor-demo/wt-gone — branch feat-gone @ 45bb378
+  [SAFE_TO_REMOVE] /tmp/worktree-janitor-demo/wt-gone — branch feat-gone @ 7b5d2cd
       directory gone (prunable)
       why: the directory is gone and git marks this worktree prunable (gitdir file points to non-existent location) — clearing the registration cannot lose files; its branch, if any, stays in the branch list below
-  [SAFE_TO_REMOVE] /tmp/worktree-janitor-demo/wt-safe — branch feat-done @ e6302bd
-      clean · last commit 0 day(s) ago, 2026-11-04 (UTC) — "done work"
+  [SAFE_TO_REMOVE] /tmp/worktree-janitor-demo/wt-safe — branch feat-done @ b9dc726
+      clean · last commit 0 day(s) ago, 2026-11-14 (UTC) — "done work"
+      disk 632 B (working tree 96 B, git metadata 536 B)
       why: clean, branch feat-done merged into main, no unpushed commits, not locked
-  [KEEP] /tmp/worktree-janitor-demo/repo — branch main @ 45bb378
-      clean · last commit 0 day(s) ago, 2026-11-04 (UTC) — "merge done"
+  [KEEP] /tmp/worktree-janitor-demo/repo — branch main @ 7b5d2cd
+      clean · last commit 0 day(s) ago, 2026-11-14 (UTC) — "merge done"
+      disk 34.2 KB (working tree 33 B, git metadata 34.1 KB)
       why: the main worktree
-  [KEEP] /tmp/worktree-janitor-demo/wt-locked — branch feat-locked @ 45bb378
-      clean · last commit 0 day(s) ago, 2026-11-04 (UTC) — "merge done"
+  [KEEP] /tmp/worktree-janitor-demo/wt-locked — branch feat-locked @ 7b5d2cd
+      clean · last commit 0 day(s) ago, 2026-11-14 (UTC) — "merge done"
+      disk 660 B (working tree 98 B, git metadata 562 B)
       why: locked by git — reason recorded by git: agent session running
 
 BRANCHES:
-  feat-done · checked out at /tmp/worktree-janitor-demo/wt-safe · merged into main · last commit 0 day(s) ago, 2026-11-04 (UTC) — "done work"
-  feat-gone · checked out at /tmp/worktree-janitor-demo/wt-gone · merged into main · last commit 0 day(s) ago, 2026-11-04 (UTC) — "merge done"
-  feat-locked · checked out at /tmp/worktree-janitor-demo/wt-locked · merged into main · last commit 0 day(s) ago, 2026-11-04 (UTC) — "merge done"
-  feat-merged-new · merged into main · last commit 0 day(s) ago, 2026-11-04 (UTC) — "new work"
-  feat-merged-old · merged into main · last commit 2498 day(s) ago, 2020-01-02 (UTC) — "old work" · STALE
-  feat-unmerged · NOT merged into main (1 commit(s) not in it) · last commit 0 day(s) ago, 2026-11-04 (UTC) — "unmerged work"
-  feat-wip · checked out at /tmp/worktree-janitor-demo/wt-dirty · NOT merged into main (1 commit(s) not in it) · last commit 0 day(s) ago, 2026-11-04 (UTC) — "wip work"
-  main · default · checked out at /tmp/worktree-janitor-demo/repo · merged into main · last commit 0 day(s) ago, 2026-11-04 (UTC) — "merge done"
+  feat-done · checked out at /tmp/worktree-janitor-demo/wt-safe · merged into main · last commit 0 day(s) ago, 2026-11-14 (UTC) — "done work"
+  feat-gone · checked out at /tmp/worktree-janitor-demo/wt-gone · merged into main · last commit 0 day(s) ago, 2026-11-14 (UTC) — "merge done"
+  feat-locked · checked out at /tmp/worktree-janitor-demo/wt-locked · merged into main · last commit 0 day(s) ago, 2026-11-14 (UTC) — "merge done"
+  feat-merged-new · merged into main · last commit 0 day(s) ago, 2026-11-14 (UTC) — "new work"
+  feat-merged-old · merged into main · last commit 2508 day(s) ago, 2020-01-02 (UTC) — "old work" · STALE
+  feat-unmerged · NOT merged into main (1 commit(s) not in it) · last commit 0 day(s) ago, 2026-11-14 (UTC) — "unmerged work"
+  feat-wip · checked out at /tmp/worktree-janitor-demo/wt-dirty · NOT merged into main (1 commit(s) not in it) · last commit 0 day(s) ago, 2026-11-14 (UTC) — "wip work"
+  main · default · checked out at /tmp/worktree-janitor-demo/repo · merged into main · last commit 0 day(s) ago, 2026-11-14 (UTC) — "merge done"
 
 STASH: 1 entry — the stash is shared across all worktrees; removing a worktree never touches it, and neither does this tool:
   stash@{0}: On main: test stash
 
 VERDICT: cleanup candidates exist — run the `plan` subcommand for the exact commands, review the REVIEW items by hand first.
-worktree-janitor only reads: every fact above came from git's own read-only queries, nothing was executed, removed or changed — not even an index refresh (GIT_OPTIONAL_LOCKS=0). Verdicts are git's facts (clean / merged / unpushed / locked), never a guess; a check that could not be made is named under CHECKS SKIPPED and its worktree is REVIEW, never SAFE.
+worktree-janitor only reads: the verdict facts above came from git's own read-only queries and the disk sizes from plain filesystem reads (symlinks never followed), nothing was executed, removed or changed — not even an index refresh (GIT_OPTIONAL_LOCKS=0). Verdicts are git's facts (clean / merged / unpushed / locked), never a guess; a check that could not be made is named under CHECKS SKIPPED and its worktree is REVIEW, never SAFE.

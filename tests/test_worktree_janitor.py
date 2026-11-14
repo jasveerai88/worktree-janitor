@@ -735,5 +735,323 @@ class ParserTest(unittest.TestCase):
         self.assertNotIn('"remove",', src)
 
 
+class HumanSizeTest(unittest.TestCase):
+    """The human byte format, pinned — it must never
+    drift between runs or versions."""
+
+    def test_human_size_pinned(self):
+        cases = [(0, "0 B"), (512, "512 B"),
+                 (1023, "1023 B"), (1024, "1.0 KB"),
+                 (1536, "1.5 KB"), (1048576, "1.0 MB"),
+                 (2621440, "2.5 MB"),
+                 (1073741824, "1.0 GB"), (None, "unknown")]
+        for n, want in cases:
+            self.assertEqual(wj.human_size(n), want,
+                             f"human_size({n})")
+
+
+class MeasureTreeTest(unittest.TestCase):
+    """_measure_tree on purpose-built trees — the exact
+    bytes are known because the test writes every file
+    itself. No git involved."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.base = Path(self._tmp.name)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _write(self, rel, n):
+        p = self.base / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes(b"x" * n)
+        return p
+
+    def test_exact_bytes_known_tree(self):
+        self._write("a.bin", 1000)
+        self._write("sub/b.bin", 24)
+        self._write("sub/deep/c.bin", 0)
+        total, warnings = wj._measure_tree(self.base)
+        # Regular files only: directories contribute 0.
+        self.assertEqual(total, 1024)
+        self.assertEqual(warnings, [])
+
+    def test_excluded_directory_not_counted(self):
+        self._write("keep.bin", 10)
+        self._write("skip/skip.bin", 500)
+        total, warnings = wj._measure_tree(
+            self.base, exclude=[self.base / "skip"])
+        self.assertEqual(total, 10)
+        self.assertEqual(warnings, [])
+
+    def test_symlinks_never_followed(self):
+        outside = self.base / "outside"
+        outside.mkdir()
+        (outside / "big.bin").write_bytes(b"x" * 5000)
+        tree = self.base / "tree"
+        tree.mkdir()
+        (tree / "real.bin").write_bytes(b"x" * 100)
+        os.symlink(outside / "big.bin", tree / "file-link")
+        os.symlink(outside, tree / "dir-link")
+        os.symlink(tree / "no-such-target",
+                   tree / "broken-link")
+        total, warnings = wj._measure_tree(tree)
+        # The 5,000-byte target is never counted through
+        # either link; the broken link is ignored, and
+        # nothing crashes.
+        self.assertEqual(total, 100)
+        self.assertEqual(warnings, [])
+
+    @unittest.skipIf(
+        getattr(os, "geteuid", lambda: 1)() == 0,
+        "root ignores permission bits")
+    def test_permission_error_warns_not_crashes(self):
+        self._write("open.bin", 50)
+        locked = self.base / "locked"
+        locked.mkdir()
+        (locked / "hidden.bin").write_bytes(b"x" * 100)
+        os.chmod(locked, 0o000)
+        try:
+            total, warnings = wj._measure_tree(self.base)
+        finally:
+            os.chmod(locked, 0o755)
+        # The readable part is counted exactly; the
+        # unreadable directory is a named warning, and
+        # its 100 bytes are absent — a lower bound.
+        self.assertEqual(total, 50)
+        self.assertTrue(warnings)
+        self.assertIn("locked", "; ".join(warnings))
+
+    def test_unreadable_dir_warns_not_crashes(self):
+        # The same OSError path, forced via a patched
+        # os.scandir so it is exercised even where the
+        # suite runs as root (where chmod 0o000 does not
+        # deny anything and the test above skips).
+        self._write("open.bin", 50)
+        locked = self.base / "locked"
+        locked.mkdir()
+        (locked / "hidden.bin").write_bytes(b"x" * 100)
+        real_scandir = os.scandir
+
+        def flaky(path, *a, **k):
+            if os.path.normpath(str(path)) == \
+                    os.path.normpath(str(locked)):
+                raise PermissionError(
+                    13, "Permission denied")
+            return real_scandir(path, *a, **k)
+
+        with mock.patch("os.scandir", flaky):
+            total, warnings = wj._measure_tree(self.base)
+        self.assertEqual(total, 50)
+        self.assertTrue(warnings)
+        self.assertIn("locked", "; ".join(warnings))
+
+
+class GitDirsTest(unittest.TestCase):
+    """_git_dirs on synthetic .git shapes — plain file
+    reads, no git repo needed."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.base = Path(self._tmp.name)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_plain_git_dir(self):
+        wt = self.base / "repo"
+        (wt / ".git").mkdir(parents=True)
+        admin, common = wj._git_dirs(wt)
+        self.assertEqual(admin, wt / ".git")
+        self.assertEqual(common, wt / ".git")
+
+    def test_commondir_redirect(self):
+        wt = self.base / "repo"
+        gd = wt / ".git"
+        gd.mkdir(parents=True)
+        real = self.base / "elsewhere.git"
+        real.mkdir()
+        (gd / "commondir").write_text("../../elsewhere.git\n")
+        admin, common = wj._git_dirs(wt)
+        self.assertEqual(admin, gd)
+        self.assertEqual(common, real)
+
+    def test_linked_gitdir_file(self):
+        common = self.base / "repo" / ".git"
+        admin = common / "worktrees" / "wt-x"
+        admin.mkdir(parents=True)
+        wt = self.base / "wt-x"
+        wt.mkdir()
+        (wt / ".git").write_text(f"gitdir: {admin}\n")
+        got_admin, got_common = wj._git_dirs(wt)
+        self.assertEqual(got_admin, admin)
+        self.assertEqual(got_common, common)
+
+    def test_garbage_git_file_is_none_not_crash(self):
+        wt = self.base / "wt-y"
+        wt.mkdir()
+        (wt / ".git").write_text("not a gitdir pointer\n")
+        self.assertEqual(wj._git_dirs(wt), (None, None))
+        empty = self.base / "wt-z"
+        empty.mkdir()
+        self.assertEqual(wj._git_dirs(empty), (None, None))
+
+
+@unittest.skipUnless(GIT, "git is not available")
+class DiskAttributionTest(unittest.TestCase):
+    """Disk records on a small hand-built repo: the
+    working-tree contents are exact bytes the test
+    wrote itself."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls._tmp = tempfile.TemporaryDirectory()
+        base = Path(cls._tmp.name)
+        cls.base = base
+        cls.repo = init_repo(base / "repo")
+        (cls.repo / "file.txt").write_bytes(
+            b"x" * 99 + b"\n")  # exactly 100 bytes
+        git(cls.repo, "add", "file.txt")
+        git(cls.repo, "commit", "-q", "-m", "base")
+        cls.wt = base / "wt-sized"
+        git(cls.repo, "worktree", "add", "-q", "-b",
+            "feat-sized", str(cls.wt))
+        (cls.wt / "payload.bin").write_bytes(b"y" * 2000)
+        sub = cls.wt / "sub"
+        sub.mkdir()
+        (sub / "payload2.bin").write_bytes(b"z" * 3000)
+        cls.result = wj.scan(cls.repo, 30)
+        cls.recs = {Path(w["path"]).name: w
+                    for w in cls.result["worktrees"]}
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._tmp.cleanup()
+
+    def test_worktree_bytes_exact(self):
+        w = self.recs["wt-sized"]
+        # file.txt (100) + payload.bin (2000) +
+        # sub/payload2.bin (3000) + the .git pointer
+        # file (a regular file — its own bytes are part
+        # of the working tree).
+        expected = 100 + 2000 + 3000 + os.path.getsize(
+            self.wt / ".git")
+        self.assertEqual(w["disk"]["worktree_bytes"],
+                         expected)
+        self.assertGreater(w["disk"]["metadata_bytes"], 0)
+        self.assertEqual(
+            w["disk"]["total_bytes"],
+            w["disk"]["worktree_bytes"]
+            + w["disk"]["metadata_bytes"])
+        self.assertTrue(w["disk"]["complete"])
+        self.assertEqual(w["disk"]["warnings"], [])
+
+    def test_main_worktree_git_dir_not_double_counted(self):
+        w = self.recs["repo"]
+        # The working tree holds exactly file.txt; the
+        # whole .git directory is metadata, counted
+        # once, on the metadata side only.
+        self.assertEqual(w["disk"]["worktree_bytes"], 100)
+        self.assertGreater(w["disk"]["metadata_bytes"], 0)
+
+    def test_totals_add_up(self):
+        total = self.result["disk"]["total_bytes"]
+        self.assertEqual(
+            total,
+            sum(w["disk"]["total_bytes"]
+                for w in self.result["worktrees"]))
+        # Nothing in this fixture is SAFE (the sized
+        # worktree has untracked payloads -> REVIEW), so
+        # the reclaimable figure is exactly 0.
+        self.assertEqual(self.result["summary"]
+                         ["safe_to_remove"], 0)
+        self.assertEqual(
+            self.result["disk"]["reclaimable_bytes"], 0)
+        self.assertTrue(self.result["disk"]["complete"])
+
+    def test_json_shape_raw_bytes(self):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = wj.main(
+                ["scan", str(self.repo), "--json"])
+        self.assertEqual(code, 1)
+        data = json.loads(out.getvalue())
+        w = {Path(x["path"]).name: x
+             for x in data["worktrees"]}["wt-sized"]
+        for key in ("worktree_bytes", "metadata_bytes",
+                    "total_bytes"):
+            self.assertIsInstance(w["disk"][key], int)
+        self.assertIsInstance(w["disk"]["complete"], bool)
+        self.assertEqual(w["disk"]["warnings"], [])
+        for key in ("total_bytes", "reclaimable_bytes",
+                    "complete"):
+            self.assertIn(key, data["disk"])
+
+    def test_text_output_shows_disk(self):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            wj.main(["scan", str(self.repo)])
+        text = out.getvalue()
+        w = self.recs["wt-sized"]
+        self.assertIn(
+            "disk " + wj.human_size(
+                w["disk"]["total_bytes"]), text)
+        self.assertIn("reclaimable", text)
+
+
+@unittest.skipUnless(GIT, "git is not available")
+class DiskFixtureTest(unittest.TestCase):
+    """Disk records on the big hand-computed fixture:
+    the gone worktree measures as null, and the
+    reclaimable total is exactly the SAFE worktree's
+    total (wt-safe is the only SAFE one with a
+    directory still on disk)."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls._tmp = tempfile.TemporaryDirectory()
+        cls.base = Path(cls._tmp.name)
+        cls.paths = build_fixture(cls.base)
+        cls.result = wj.scan(cls.paths["repo"], 30)
+        cls.wts = {Path(w["path"]).name: w
+                   for w in cls.result["worktrees"]}
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._tmp.cleanup()
+
+    def test_missing_worktree_disk_is_null(self):
+        self.assertIsNone(self.wts["wt-gone"]["disk"])
+        for name in ("repo", "wt-safe", "wt-dirty",
+                     "wt-locked", "wt-detached"):
+            dk = self.wts[name]["disk"]
+            self.assertIsNotNone(dk, name)
+            self.assertIsInstance(dk["total_bytes"], int)
+            self.assertGreater(dk["total_bytes"], 0)
+
+    def test_reclaimable_is_safe_total_only(self):
+        self.assertEqual(
+            self.result["disk"]["reclaimable_bytes"],
+            self.wts["wt-safe"]["disk"]["total_bytes"])
+        self.assertEqual(
+            self.result["disk"]["total_bytes"],
+            sum(w["disk"]["total_bytes"]
+                for w in self.result["worktrees"]
+                if w["disk"] is not None))
+
+    def test_plan_remove_reason_names_reclaim(self):
+        plan = wj.build_plan(self.result)
+        remove = [p for p in plan
+                  if p["kind"] == "worktree-remove"]
+        self.assertEqual(len(remove), 1)
+        self.assertIn("reclaims", remove[0]["reason"])
+        self.assertIn(
+            wj.human_size(
+                self.wts["wt-safe"]["disk"]
+                ["total_bytes"]),
+            remove[0]["reason"])
+
+
 if __name__ == "__main__":
     unittest.main()

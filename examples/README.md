@@ -8,7 +8,7 @@ worktree-janitor on that fixture — real runs, not
 mock-ups:
 
 - `sample-report.txt` — `scan` (text), captured
-  2026-11-04 at `/tmp/worktree-janitor-demo`. Exit 1.
+  2026-11-14 at `/tmp/worktree-janitor-demo`. Exit 1.
 - `sample-plan.txt` — `plan` (text), same fixture, same
   day. Exit 1. The commands were printed, not run — the
   sample repo was still standing, untouched, afterwards.

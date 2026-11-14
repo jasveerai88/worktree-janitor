@@ -36,8 +36,15 @@ HEAD), HEAD commit, dirty/clean with file counts, ahead /
 behind vs its upstream (or commit counts vs the default
 branch when no upstream is configured — the basis is
 always named), last-commit age in days from git's own
-committer timestamps, and the locked / prunable state
-git itself reports. Each worktree gets one verdict:
+committer timestamps, the locked / prunable state
+git itself reports, and a disk attribution: the apparent
+size of its working tree plus its share of the git
+metadata, summed across the repo into a total and a
+reclaimable figure for the SAFE_TO_REMOVE set. Sizes
+come from plain filesystem reads — symlinks are never
+followed and a path that cannot be read is named as a
+warning — so this adds no git invocation at all. Each
+worktree gets one verdict:
 
     SAFE_TO_REMOVE  clean, branch merged into the default
                     branch, no unpushed commits, not
@@ -94,7 +101,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 TOOL = "worktree-janitor"
 
 SAFE = "SAFE_TO_REMOVE"
@@ -338,6 +345,177 @@ def _range_count(repo, range_spec):
     if rc != 0:
         return None
     return sum(1 for ln in out.splitlines() if ln.strip())
+
+
+# --------------------------------------------------------------------------
+# Disk attribution — plain filesystem reads, no git call
+# --------------------------------------------------------------------------
+
+_SIZE_UNITS = ("B", "KB", "MB", "GB", "TB", "PB")
+
+
+def human_size(n):
+    """Stable human form of a byte count: exact bytes
+    under 1 KiB ("512 B"), one decimal above ("1.5 KB").
+    None (unmeasured) renders as "unknown"."""
+    if n is None:
+        return "unknown"
+    if n < 1024:
+        return f"{n} B"
+    v = float(n)
+    unit = "B"
+    for unit in _SIZE_UNITS[1:]:
+        v /= 1024.0
+        if v < 1024.0:
+            break
+    return f"{v:.1f} {unit}"
+
+
+def _measure_tree(root, exclude=()):
+    """(bytes, warnings) — the apparent size of ROOT:
+    the sum of st_size over every regular file beneath
+    it. Symlinks are never followed and contribute
+    nothing themselves (a link's target is counted
+    where it lives, if that is inside the tree);
+    directories contribute 0 — their entry sizes are
+    filesystem bookkeeping, not content. Directories
+    named in EXCLUDE are not descended into. An entry
+    that cannot be read is named in WARNINGS and
+    skipped, so the total is then a lower bound —
+    stated by the caller, never silently short."""
+    total = 0
+    warnings = []
+    excluded = {os.path.normpath(str(p)) for p in exclude}
+    stack = [Path(root)]
+    while stack:
+        cur = stack.pop()
+        try:
+            with os.scandir(cur) as it:
+                entries = list(it)
+        except OSError as exc:
+            warnings.append(
+                f"could not read {cur} "
+                f"({exc.strerror or exc}) — its size is "
+                f"not counted")
+            continue
+        for e in entries:
+            try:
+                if e.is_dir(follow_symlinks=False):
+                    if os.path.normpath(e.path) not in \
+                            excluded:
+                        stack.append(Path(e.path))
+                elif e.is_file(follow_symlinks=False):
+                    total += e.stat(
+                        follow_symlinks=False).st_size
+            except OSError as exc:
+                warnings.append(
+                    f"could not read {e.path} "
+                    f"({exc.strerror or exc}) — its size "
+                    f"is not counted")
+    return total, warnings
+
+
+def _is_within(path, root):
+    p, r = str(Path(path)), str(Path(root))
+    return p == r or p.startswith(r + os.sep)
+
+
+def _git_dirs(wpath):
+    """(admin_dir, common_dir) for the worktree at
+    WPATH, from plain file reads: the .git directory
+    itself for a main worktree, or the .git file's
+    "gitdir:" pointer for a linked one. No git call —
+    the read-only gate's verb list does not grow for
+    this feature. Either value is None when it cannot
+    be determined."""
+    dotgit = Path(wpath) / ".git"
+    try:
+        if dotgit.is_dir():
+            common = dotgit
+            cf = dotgit / "commondir"
+            if cf.is_file():
+                target = cf.read_text(
+                    encoding="utf-8",
+                    errors="replace").strip()
+                if target:
+                    common = Path(os.path.normpath(
+                        dotgit / target))
+            return dotgit, common
+        if dotgit.is_file():
+            for line in dotgit.read_text(
+                    encoding="utf-8",
+                    errors="replace").splitlines():
+                if line.startswith("gitdir:"):
+                    admin = Path(
+                        line[len("gitdir:"):].strip())
+                    if not admin.is_absolute():
+                        admin = Path(os.path.normpath(
+                            Path(wpath) / admin))
+                    if admin.parent.name == "worktrees":
+                        return admin, admin.parent.parent
+                    return admin, admin
+    except OSError:
+        pass
+    return None, None
+
+
+def _disk_for(rec):
+    """The disk record for one worktree:
+    {worktree_bytes, metadata_bytes, total_bytes,
+    complete, warnings} — or None when the worktree's
+    directory is gone (nothing on disk to measure;
+    only the registration remains).
+
+    Working-tree bytes come from a symlink-blind walk
+    of the worktree folder, with the .git area inside
+    it excluded — that area is counted as metadata,
+    never twice. Metadata bytes are this worktree's
+    share of the git dir: a linked worktree's own
+    admin area (<common>/worktrees/<id>); for the
+    main worktree, the shared git dir minus those
+    per-worktree admin areas — so the shares
+    partition the git dir instead of overlapping. A
+    bare repo is all metadata and no working tree."""
+    wpath = Path(rec["path"])
+    if rec["status"] == "missing":
+        return None
+    warnings = []
+    if rec["bare"]:
+        meta, mw = _measure_tree(wpath)
+        warnings.extend(mw)
+        return {"worktree_bytes": 0,
+                "metadata_bytes": meta,
+                "total_bytes": meta,
+                "complete": not warnings,
+                "warnings": warnings}
+    admin, common = _git_dirs(wpath)
+    exclude = []
+    if admin is not None and _is_within(admin, wpath):
+        exclude.append(admin)
+    wt_bytes, ww = _measure_tree(wpath, exclude=exclude)
+    warnings.extend(ww)
+    if admin is None:
+        meta = None
+        warnings.append(
+            "the .git location for this worktree could "
+            "not be determined — its git metadata size "
+            "is unknown")
+    elif common is not None \
+            and admin.parent.name == "worktrees" \
+            and admin.parent.parent == common:
+        meta, mw = _measure_tree(admin)
+        warnings.extend(mw)
+    else:
+        base = common if common is not None else admin
+        meta, mw = _measure_tree(
+            base, exclude=[base / "worktrees"])
+        warnings.extend(mw)
+    total = wt_bytes + meta if meta is not None else None
+    return {"worktree_bytes": wt_bytes,
+            "metadata_bytes": meta,
+            "total_bytes": total,
+            "complete": not warnings,
+            "warnings": warnings}
 
 
 # --------------------------------------------------------------------------
@@ -626,6 +804,7 @@ def scan(d, stale_days):
                            "was run from")
         rec["verdict"] = verdict
         rec["reasons"] = reasons
+        rec["disk"] = _disk_for(rec)
         worktrees.append(rec)
 
     # A branch checked out ONLY in a registration whose
@@ -672,6 +851,23 @@ def scan(d, stale_days):
     summary["findings"] = (summary["safe_to_remove"]
                            + summary["review"]
                            + summary["stale_branches"])
+
+    # ---- disk totals (sizes never change verdicts) ------
+    measured = [w["disk"] for w in worktrees
+                if w["disk"] is not None
+                and w["disk"]["total_bytes"] is not None]
+    disk = {
+        "total_bytes": sum(d["total_bytes"]
+                           for d in measured),
+        "reclaimable_bytes": sum(
+            w["disk"]["total_bytes"] for w in worktrees
+            if w["verdict"] == SAFE
+            and w["disk"] is not None
+            and w["disk"]["total_bytes"] is not None),
+        "complete": len(measured) == sum(
+            1 for w in worktrees if w["disk"] is not None)
+        and all(d["complete"] for d in measured),
+    }
     return {"repo": str(repo_root),
             "default_branch": default,
             "default_branch_basis": basis,
@@ -686,6 +882,7 @@ def scan(d, stale_days):
                       "entries": stash_entries},
             "checks_skipped": skipped,
             "summary": summary,
+            "disk": disk,
             "clean": summary["findings"] == 0}
 
 
@@ -712,12 +909,20 @@ def build_plan(result):
                           "already gone (one prune clears "
                           "every such registration)"})
         else:
+            reason = "; ".join(w["reasons"])
+            dk = w.get("disk")
+            if dk is not None \
+                    and dk.get("total_bytes") is not None:
+                reason += (
+                    f" — removing it reclaims "
+                    f"{human_size(dk['total_bytes'])} "
+                    f"of disk")
             plan.append({
                 "kind": "worktree-remove",
                 "command": "git worktree remove "
                            + shlex.quote(w["path"]),
                 "target": w["path"],
-                "reason": "; ".join(w["reasons"])})
+                "reason": reason})
     if need_prune:
         plan = [p for p in plan
                 if p["kind"] != "worktree-prune"] + [{
@@ -793,6 +998,17 @@ def _worktree_lines(w):
                      f"{_commit_phrase(w)}{extra}")
     elif w["status"] == "missing":
         lines.append("      directory gone (prunable)")
+    dk = w.get("disk")
+    if dk is not None:
+        phrase = (
+            f"disk {human_size(dk['total_bytes'])} "
+            f"(working tree "
+            f"{human_size(dk['worktree_bytes'])}, git "
+            f"metadata {human_size(dk['metadata_bytes'])})")
+        if not dk["complete"]:
+            phrase += (" — partial, a lower bound: "
+                       + "; ".join(dk["warnings"]))
+        lines.append(f"      {phrase}")
     lines.append(f"      why: {'; '.join(w['reasons'])}")
     return lines
 
@@ -816,6 +1032,17 @@ def render_header(result, command):
         f" branch(es) · {s['stale_branches']} stale"
         f" · {s['stashes']} stash entr"
         f"{'y' if s['stashes'] == 1 else 'ies'}")
+    dk = result.get("disk") or {}
+    disk_line = (
+        f"disk: {human_size(dk.get('total_bytes'))} "
+        f"attributed across all worktrees · "
+        f"{human_size(dk.get('reclaimable_bytes'))} "
+        f"reclaimable from the SAFE_TO_REMOVE ones")
+    if dk and not dk.get("complete", True):
+        disk_line += (" · some sizes are lower bounds "
+                      "(unreadable paths, named per "
+                      "worktree)")
+    lines.append(disk_line)
     return lines
 
 
@@ -890,8 +1117,10 @@ def render_scan(result):
             "`plan` subcommand for the exact commands, "
             "review the REVIEW items by hand first.")
     lines.append(
-        "worktree-janitor only reads: every fact above "
-        "came from git's own read-only queries, nothing "
+        "worktree-janitor only reads: the verdict facts "
+        "above came from git's own read-only queries and "
+        "the disk sizes from plain filesystem reads "
+        "(symlinks never followed), nothing "
         "was executed, removed or changed — not even an "
         "index refresh (GIT_OPTIONAL_LOCKS=0). Verdicts "
         "are git's facts (clean / merged / unpushed / "
@@ -940,8 +1169,9 @@ def render_plan(result):
     lines.append(
         "worktree-janitor only reads: this plan was "
         "computed from git's own read-only queries and "
-        "printed as text. Nothing was executed, removed "
-        "or changed.")
+        "the disk sizes from plain filesystem reads, "
+        "and printed as text. Nothing was executed, "
+        "removed or changed.")
     return "\n".join(lines)
 
 

@@ -1,6 +1,6 @@
 ---
 name: worktree-janitor
-description: Read-only inventory of a git repo's worktrees and local branches, with verdicts and a cleanup plan that is printed, never executed. `worktree-janitor scan DIR` (DIR = any folder in the repo) reports per worktree: branch or detached HEAD, dirty/clean with staged/unstaged/untracked counts, ahead/behind vs upstream, merged-into-default or not, unpushed commits (basis always named), last-commit age from git's committer timestamps, locked/prunable state as git reports it. Verdicts: SAFE_TO_REMOVE (clean, merged, no unpushed, not locked, not main, not current — or a prunable registration), REVIEW (uncommitted/untracked work, unmerged branch, unpushed commits, detached HEAD, or any check that could not be verified — exact reason printed), KEEP (main worktree, locked, current worktree, bare). Branches: merged/tip age/checked-out-where/upstream; STALE = merged + not checked out + last commit at least --stale-days old (default 30). `plan` prints the exact git commands for the SAFE items only (worktree remove, one worktree prune, branch -d — never -D; stale-after-prune deletions sequenced after the prune). The tool runs ONLY git's read-only queries (worktree list, status, branch, log, stash list) through an in-code allowlist gate with GIT_OPTIONAL_LOCKS=0, and contains no execution path for the plan. Exit 0 = nothing to clean, 1 = candidates/REVIEW exist, 2 = error (not a repo, git missing). Use before any worktree/branch cleanup in an agent-heavy repo.
+description: Read-only inventory of a git repo's worktrees and local branches, with verdicts and a cleanup plan that is printed, never executed. `worktree-janitor scan DIR` (DIR = any folder in the repo) reports per worktree: branch or detached HEAD, dirty/clean with staged/unstaged/untracked counts, ahead/behind vs upstream, merged-into-default or not, unpushed commits (basis always named), last-commit age from git's committer timestamps, locked/prunable state as git reports it, and disk attribution (apparent bytes of the working tree plus its share of the git metadata; repo total and the SAFE_TO_REMOVE reclaimable figure in the header and under top-level `disk` in JSON). Verdicts: SAFE_TO_REMOVE (clean, merged, no unpushed, not locked, not main, not current — or a prunable registration), REVIEW (uncommitted/untracked work, unmerged branch, unpushed commits, detached HEAD, or any check that could not be verified — exact reason printed), KEEP (main worktree, locked, current worktree, bare). Branches: merged/tip age/checked-out-where/upstream; STALE = merged + not checked out + last commit at least --stale-days old (default 30). `plan` prints the exact git commands for the SAFE items only (worktree remove, one worktree prune, branch -d — never -D; stale-after-prune deletions sequenced after the prune). The tool runs ONLY git's read-only queries (worktree list, status, branch, log, stash list) through an in-code allowlist gate with GIT_OPTIONAL_LOCKS=0, and contains no execution path for the plan. Exit 0 = nothing to clean, 1 = candidates/REVIEW exist, 2 = error (not a repo, git missing). Use before any worktree/branch cleanup in an agent-heavy repo.
 ---
 
 # worktree-janitor — agent skill
@@ -49,12 +49,15 @@ Do NOT use when:
   private worktree stashes and orphaned directories git
   has no registration for are invisible to it (stated in
   the report's honesty footer and the README's limits).
-- You need disk sizes. v1.0.0 does not measure them.
+- You need allocated-block accounting (`du`-style).
+  Disk sizes here are apparent bytes of regular
+  files; symlinks are never followed, and a worktree
+  whose directory is gone reports no size.
 
 ## Commands
 
-Installed via `pipx install worktree-janitor` or
-`pip install worktree-janitor`. From a source checkout,
+Installed via `pipx install worktree-janitor-cli` or
+`pip install worktree-janitor-cli`. From a source checkout,
 prefix each command with `python3 src/worktree_janitor.py`
 instead of `worktree-janitor` — same tool, same output.
 
@@ -156,7 +159,10 @@ Common fields: `tool` (`"worktree-janitor"`),
 `default_branch_basis`, `stale_days`, `now_unix`,
 `worktrees`, `branches`, `stale_branches`,
 `stale_after_prune`, `stash` (`{count, entries}`),
-`checks_skipped` (list of strings), `summary`, `clean`.
+`checks_skipped` (list of strings), `summary`,
+`disk` (`{total_bytes, reclaimable_bytes, complete}`
+— attributed totals over the worktrees whose sizes
+could be measured), `clean`.
 `plan` output adds `plan`: a list of `{kind, command,
 target, reason}` with kind in `worktree-remove` |
 `worktree-prune` | `branch-delete` |
@@ -169,7 +175,17 @@ Each worktree: `path`, `head`, `branch` (or `null`),
 `changed_files`, `staged_files`, `unstaged_files`,
 `untracked_files`, `upstream`, `ahead`, `behind`,
 `last_commit` (`{sha, unix, date, age_days, subject}`
-or `null`), `verdict`, `reasons` (list of strings).
+or `null`), `verdict`, `reasons` (list of strings),
+`disk` (`{worktree_bytes, metadata_bytes,
+total_bytes, complete, warnings}` in raw bytes —
+apparent size of regular files, symlinks never
+followed; `metadata_bytes`/`total_bytes` are `null`
+when the worktree's `.git` location could not be
+determined, with the reason in `warnings`;
+`complete: false` means some paths were unreadable
+and the sizes are lower bounds; the whole `disk`
+value is `null` when the worktree's directory is
+gone — nothing on disk to measure).
 Counts are `null` when the status could not be read.
 
 Each branch: `name`, `upstream`, `tip`,
@@ -225,6 +241,15 @@ text, never a traceback.
   directories git has forgotten entirely, are not in
   this report. Do not claim "all worktrees" — say "all
   worktrees git knows about".
+- **Disk sizes are apparent file content, not block
+  usage, and never change a verdict.** Quote a size
+  with its completeness: a `complete: false` disk
+  record is a lower bound with named unreadable
+  paths, and the reclaimable total is a floor (a
+  gone worktree's leftover git admin area is
+  attributed to no one, and the prune removes it
+  too). Do not restate apparent bytes as "disk space
+  freed" without that basis.
 - Local only: the tool reads the one repository named,
   runs no network operations (not even a fetch), and
   sends nothing anywhere.
